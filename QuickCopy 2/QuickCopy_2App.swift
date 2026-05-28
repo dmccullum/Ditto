@@ -31,18 +31,23 @@ struct QuickCopy_2App: App {
 
     init() {
         let schema = Schema([Snippet.self, Category.self])
+        // Try CloudKit first; fall back to local store if not yet provisioned.
+        let cloudConfig = ModelConfiguration(cloudKitDatabase: .automatic)
+        let localConfig = ModelConfiguration()
         do {
-            container = try ModelContainer(for: schema)
+            container = try ModelContainer(for: schema, configurations: cloudConfig)
         } catch {
-            // Store migration failed (e.g. after a schema change). Reset to a
-            // clean state — SampleData will repopulate on next launch.
-            if let support = FileManager.default
-                .urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-                for name in ["default.store", "default.store-shm", "default.store-wal"] {
-                    try? FileManager.default.removeItem(at: support.appendingPathComponent(name))
+            do {
+                container = try ModelContainer(for: schema, configurations: localConfig)
+            } catch {
+                if let support = FileManager.default
+                    .urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                    for name in ["default.store", "default.store-shm", "default.store-wal"] {
+                        try? FileManager.default.removeItem(at: support.appendingPathComponent(name))
+                    }
                 }
+                container = try! ModelContainer(for: schema, configurations: localConfig)
             }
-            container = try! ModelContainer(for: schema)
         }
         SampleData.seedIfNeeded(container.mainContext)
     }

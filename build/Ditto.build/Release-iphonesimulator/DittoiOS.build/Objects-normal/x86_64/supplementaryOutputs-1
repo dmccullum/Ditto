@@ -1,0 +1,12 @@
+{
+  "/Users/daniel.mccullum/Documents/Apps/Ditto/Ditto iOS/Models/Category.swift" : {
+    "abi-baseline-json" : "/Users/daniel.mccullum/Documents/Apps/Ditto/build/Ditto.build/Release-iphonesimulator/DittoiOS.build/Objects-normal/x86_64/DittoiOS.abi.json",
+    "const-values" : "/Users/daniel.mccullum/Documents/Apps/Ditto/build/Ditto.build/Release-iphonesimulator/DittoiOS.build/Objects-normal/x86_64/DittoiOS-primary.swiftconstvalues",
+    "dependencies" : "/Users/daniel.mccullum/Documents/Apps/Ditto/build/Ditto.build/Release-iphonesimulator/DittoiOS.build/Objects-normal/x86_64/DittoiOS-primary.d",
+    "diagnostics" : "/Users/daniel.mccullum/Documents/Apps/Ditto/build/Ditto.build/Release-iphonesimulator/DittoiOS.build/Objects-normal/x86_64/DittoiOS-primary.dia",
+    "objc-header" : "/Users/daniel.mccullum/Documents/Apps/Ditto/build/Ditto.build/Release-iphonesimulator/DittoiOS.build/Objects-normal/x86_64/DittoiOS-Swift.h",
+    "swiftdoc" : "/Users/daniel.mccullum/Documents/Apps/Ditto/build/Ditto.build/Release-iphonesimulator/DittoiOS.build/Objects-normal/x86_64/DittoiOS.swiftdoc",
+    "swiftmodule" : "/Users/daniel.mccullum/Documents/Apps/Ditto/build/Ditto.build/Release-iphonesimulator/DittoiOS.build/Objects-normal/x86_64/DittoiOS.swiftmodule",
+    "swiftsourceinfo" : "/Users/daniel.mccullum/Documents/Apps/Ditto/build/Ditto.build/Release-iphonesimulator/DittoiOS.build/Objects-normal/x86_64/DittoiOS.swiftsourceinfo"
+  }
+}
