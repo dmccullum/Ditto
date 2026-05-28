@@ -9,11 +9,20 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import AppKit
 
 /// What's selected in the sidebar.
 enum SidebarSelection: Hashable {
     case all
+    case frequent
+    case recent
     case category(Category)
+}
+
+/// A pending "new snippet from pasted text" request.
+struct PasteDraft: Identifiable {
+    let id = UUID()
+    let text: String
 }
 
 struct ContentView: View {
@@ -30,6 +39,7 @@ struct ContentView: View {
     @State private var isCreatingSnippet = false
     @State private var editingCategory: Category?
     @State private var isCreatingCategory = false
+    @State private var pasteDraft: PasteDraft?
 
     // The snippet currently being dragged, captured when the drag starts.
     @State private var draggedSnippet: Snippet?
@@ -55,10 +65,20 @@ struct ContentView: View {
         }
         .sheet(item: $editingCategory) { CategoryEditor(category: $0) }
         .sheet(isPresented: $isCreatingCategory) { CategoryEditor(category: nil) }
-        .onChange(of: appCommands.createSnippet) { _, create in
+        .sheet(item: $pasteDraft) { draft in
+            SnippetEditor(snippet: nil, defaultCategory: selectedCategory, defaultContent: draft.text)
+        }
+        .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
+            // Fires only when no text field consumes the paste, so normal
+            // ⌘V in the search/editor fields still works.
+            let text = NSPasteboard.general.string(forType: .string) ?? ""
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+            pasteDraft = PasteDraft(text: text)
+        }
+        .onChange(of: appCommands.createSnippet, initial: true) { _, create in
             if create { isCreatingSnippet = true; appCommands.createSnippet = false }
         }
-        .onChange(of: appCommands.createCategory) { _, create in
+        .onChange(of: appCommands.createCategory, initial: true) { _, create in
             if create { isCreatingCategory = true; appCommands.createCategory = false }
         }
         .onChange(of: draggedSnippet) { _, dragged in
@@ -95,6 +115,15 @@ struct ContentView: View {
                         onUncategorize: { move($0, to: nil) }
                     )
                 )
+
+                Label("Frequent", systemImage: "flame.fill")
+                    .symbolRenderingMode(.multicolor)
+                    .padding(.vertical, 2)
+                    .tag(SidebarSelection.frequent)
+
+                Label("Recent", systemImage: "clock.fill")
+                    .padding(.vertical, 2)
+                    .tag(SidebarSelection.recent)
             }
 
             Section("Categories") {
@@ -105,7 +134,7 @@ struct ContentView: View {
                 .onMove(perform: moveCategories)
             }
         }
-        .navigationTitle("QuickCopy")
+        .navigationTitle("Ditto")
         .frame(minWidth: 220)
         .safeAreaInset(edge: .bottom) {
             Button {
@@ -202,22 +231,37 @@ struct ContentView: View {
                         onCommit: commitSnippetOrder
                     )
                 }
+
+                // The add tile only appears in views you populate manually.
+                if isReorderable {
+                    AddSnippetCard { isCreatingSnippet = true }
+                }
             }
             .padding(20)
         }
     }
 
+    @ViewBuilder
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("No Snippets Yet", systemImage: "sparkles")
-        } description: {
-            Text(searchText.isEmpty
-                 ? "Add a snippet to start building your library."
-                 : "No snippets match “\(searchText)”.")
-        } actions: {
-            if searchText.isEmpty {
-                Button("New Snippet", systemImage: "plus") { isCreatingSnippet = true }
-                    .buttonStyle(.borderedProminent)
+        if !searchText.isEmpty {
+            ContentUnavailableView.search(text: searchText)
+        } else {
+            switch selection {
+            case .frequent:
+                ContentUnavailableView("Nothing Frequent Yet", systemImage: "flame",
+                    description: Text("Snippets you copy often will show up here."))
+            case .recent:
+                ContentUnavailableView("Nothing Recent Yet", systemImage: "clock",
+                    description: Text("Snippets you've copied will appear here, newest first."))
+            default:
+                ContentUnavailableView {
+                    Label("No Snippets Yet", systemImage: "sparkles")
+                } description: {
+                    Text("Add a snippet to start building your library.")
+                } actions: {
+                    Button("New Snippet", systemImage: "plus") { isCreatingSnippet = true }
+                        .buttonStyle(.borderedProminent)
+                }
             }
         }
     }
@@ -232,15 +276,36 @@ struct ContentView: View {
     private var detailTitle: String {
         switch selection {
         case .all: return "All Snippets"
+        case .frequent: return "Frequently Used"
+        case .recent: return "Recently Copied"
         case .category(let category): return category.name
         }
     }
 
-    private var filteredSnippets: [Snippet] {
-        var snippets = allSnippets
+    /// Reordering only makes sense in the manually-ordered views.
+    private var isReorderable: Bool {
+        switch selection {
+        case .all, .category: return true
+        case .frequent, .recent: return false
+        }
+    }
 
-        if case let .category(category) = selection {
-            snippets = snippets.filter { $0.category?.persistentModelID == category.persistentModelID }
+    private var filteredSnippets: [Snippet] {
+        var snippets: [Snippet]
+
+        switch selection {
+        case .all:
+            snippets = allSnippets
+        case .category(let category):
+            snippets = allSnippets.filter { $0.category?.persistentModelID == category.persistentModelID }
+        case .frequent:
+            snippets = allSnippets
+                .filter { $0.copyCount > 0 }
+                .sorted { $0.copyCount > $1.copyCount }
+        case .recent:
+            snippets = allSnippets
+                .filter { $0.lastCopiedAt != nil }
+                .sorted { ($0.lastCopiedAt ?? .distantPast) > ($1.lastCopiedAt ?? .distantPast) }
         }
 
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -271,7 +336,7 @@ struct ContentView: View {
     /// Live reorder during a drag — mutates only the local copy so the grid
     /// animates smoothly without the database re-sorting under the cursor.
     private func reorderSnippetLocally(_ dragged: Snippet, target: Snippet) {
-        guard dragged.persistentModelID != target.persistentModelID else { return }
+        guard isReorderable, dragged.persistentModelID != target.persistentModelID else { return }
         var ordered = gridSnippets
         guard let from = ordered.firstIndex(where: { $0.persistentModelID == dragged.persistentModelID }),
               let to = ordered.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) else { return }

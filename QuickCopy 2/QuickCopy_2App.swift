@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import AppKit
 
 /// Lets the app-level menu commands (⌘N etc.) ask the main window to act.
 @Observable
@@ -21,6 +22,7 @@ struct QuickCopy_2App: App {
     /// here and hand the same container to both the main window and the menu bar.
     let container: ModelContainer
     @State private var commands = AppCommands()
+    @State private var settings = AppSettings()
 
     init() {
         do {
@@ -33,27 +35,66 @@ struct QuickCopy_2App: App {
     }
 
     var body: some Scene {
-        // The full management window (sidebar + snippet cards).
-        WindowGroup(id: "main") {
+        // The full management window (sidebar + snippet cards). A single-instance
+        // Window (not WindowGroup) so reopening it never spawns duplicates.
+        Window("Ditto", id: "main") {
             ContentView()
                 .environment(commands)
+                .environment(settings)
         }
         .modelContainer(container)
         .commands {
-            // Replace the default "New Window" (⌘N) with our own create actions.
-            CommandGroup(replacing: .newItem) {
-                Button("New Snippet") { commands.createSnippet = true }
-                    .keyboardShortcut("n", modifiers: .command)
-                Button("New Category") { commands.createCategory = true }
-                    .keyboardShortcut("n", modifiers: [.command, .shift])
-            }
+            DittoCommands(commands: commands)
         }
 
         // The always-available menu bar dropdown for quick copying.
-        MenuBarExtra("QuickCopy", systemImage: "doc.on.clipboard.fill") {
+        MenuBarExtra("Ditto", systemImage: "doc.on.clipboard.fill") {
             MenuBarView()
                 .modelContainer(container)
+                .environment(settings)
         }
         .menuBarExtraStyle(.window)
+
+        // Preferences (⌘,).
+        Settings {
+            SettingsView()
+                .environment(settings)
+        }
+    }
+}
+
+/// App menu commands. Lives in its own type so it can use `openWindow`, which
+/// lets us reopen the main window even after it's been closed.
+struct DittoCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+    var commands: AppCommands
+
+    var body: some Commands {
+        // Replace the default "New Window" (⌘N) with our own create actions.
+        // These also reopen the window first, so they work even if it's closed.
+        CommandGroup(replacing: .newItem) {
+            Button("New Snippet") {
+                showMainWindow()
+                commands.createSnippet = true
+            }
+            .keyboardShortcut("n", modifiers: .command)
+
+            Button("New Category") {
+                showMainWindow()
+                commands.createCategory = true
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
+        }
+
+        // A reliable way back to the window after closing it.
+        CommandGroup(after: .windowList) {
+            Button("Ditto Window") { showMainWindow() }
+                .keyboardShortcut("0", modifiers: .command)
+        }
+    }
+
+    private func showMainWindow() {
+        openWindow(id: "main")
+        NSApp.activate(ignoringOtherApps: true)
     }
 }

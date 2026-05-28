@@ -12,6 +12,7 @@ import AppKit
 
 struct MenuBarView: View {
     @Environment(\.openWindow) private var openWindow
+    @Environment(AppSettings.self) private var settings
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
 
@@ -59,24 +60,60 @@ struct MenuBarView: View {
     private var snippetList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
-                ForEach(groupedSnippets, id: \.title) { group in
-                    Text(group.title.uppercased())
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        .padding(.bottom, 2)
-
-                    ForEach(group.snippets) { snippet in
-                        MenuBarRow(
-                            snippet: snippet,
-                            justCopied: justCopiedID == snippet.persistentModelID,
-                            action: { copy(snippet) }
-                        )
+                ForEach(displayGroups, id: \.title) { group in
+                    sectionHeader(group)
+                    if isExpanded(group.title) {
+                        ForEach(group.rows) { row in
+                            MenuBarRow(
+                                snippet: row.snippet,
+                                justCopied: justCopiedID == row.snippet.persistentModelID,
+                                action: { copy(row.snippet) }
+                            )
+                        }
                     }
                 }
             }
             .padding(.bottom, 6)
+        }
+    }
+
+    private func sectionHeader(_ group: Group) -> some View {
+        Button {
+            toggle(group.title)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .rotationEffect(.degrees(isExpanded(group.title) ? 90 : 0))
+                Text(group.title.uppercased())
+                    .font(.caption2.weight(.semibold))
+                Spacer()
+                Text("\(group.rows.count)")
+                    .font(.caption2)
+                    .monospacedDigit()
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func isExpanded(_ title: String) -> Bool {
+        // Always expand while searching so matches aren't hidden.
+        if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        return !settings.collapsedSections.contains(title)
+    }
+
+    private func toggle(_ title: String) {
+        withAnimation(.snappy(duration: 0.18)) {
+            if settings.collapsedSections.contains(title) {
+                settings.collapsedSections.remove(title)
+            } else {
+                settings.collapsedSections.insert(title)
+            }
         }
     }
 
@@ -98,7 +135,7 @@ struct MenuBarView: View {
                 openWindow(id: "main")
                 NSApp.activate(ignoringOtherApps: true)
             } label: {
-                Label("Open QuickCopy", systemImage: "macwindow")
+                Label("Open Ditto", systemImage: "macwindow")
             }
             .buttonStyle(.plain)
 
@@ -110,7 +147,7 @@ struct MenuBarView: View {
                 Image(systemName: "power").foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .help("Quit QuickCopy")
+            .help("Quit Ditto")
         }
         .font(.callout)
         .padding(10)
@@ -126,9 +163,42 @@ struct MenuBarView: View {
         }
     }
 
+    /// A row carries a section-unique id so the same snippet can appear in both
+    /// "Frequently Used" and its category without SwiftUI identity collisions.
+    private struct Row: Identifiable {
+        let id: String
+        let snippet: Snippet
+    }
+
     private struct Group {
         let title: String
-        let snippets: [Snippet]
+        let rows: [Row]
+    }
+
+    private func makeRows(_ snippets: [Snippet], section: String) -> [Row] {
+        snippets.map { Row(id: "\(section)-\($0.persistentModelID.hashValue)", snippet: $0) }
+    }
+
+    /// Top snippets by copy count, for the quick-access section.
+    private var frequentSnippets: [Snippet] {
+        Array(
+            allSnippets
+                .filter { $0.copyCount > 0 }
+                .sorted { $0.copyCount > $1.copyCount }
+                .prefix(5)
+        )
+    }
+
+    /// What the list shows: a "Frequently Used" shortcut on top (when not
+    /// searching), then the per-category groups.
+    private var displayGroups: [Group] {
+        var groups: [Group] = []
+        if searchText.isEmpty && !frequentSnippets.isEmpty {
+            groups.append(Group(title: "Frequently Used",
+                                rows: makeRows(frequentSnippets, section: "Frequently Used")))
+        }
+        groups.append(contentsOf: groupedSnippets)
+        return groups
     }
 
     private var groupedSnippets: [Group] {
@@ -138,12 +208,12 @@ struct MenuBarView: View {
                 $0.category?.persistentModelID == category.persistentModelID
             }
             if !matches.isEmpty {
-                groups.append(Group(title: category.name, snippets: matches))
+                groups.append(Group(title: category.name, rows: makeRows(matches, section: category.name)))
             }
         }
         let uncategorized = filteredSnippets.filter { $0.category == nil }
         if !uncategorized.isEmpty {
-            groups.append(Group(title: "Uncategorized", snippets: uncategorized))
+            groups.append(Group(title: "Uncategorized", rows: makeRows(uncategorized, section: "Uncategorized")))
         }
         return groups
     }

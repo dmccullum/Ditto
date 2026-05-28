@@ -405,8 +405,10 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Daniel-McCullum.QuickCopy-2";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.danielmccullum.ditto";
+				PRODUCT_MODULE_NAME = QuickCopy_2;
+				PRODUCT_NAME = Ditto;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -435,8 +437,10 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Daniel-McCullum.QuickCopy-2";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.danielmccullum.ditto";
+				PRODUCT_MODULE_NAME = QuickCopy_2;
+				PRODUCT_NAME = Ditto;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -463,7 +467,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QuickCopy 2.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/QuickCopy 2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ditto.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Ditto";
 			};
 			name = Debug;
 		};
@@ -483,7 +487,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QuickCopy 2.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/QuickCopy 2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ditto.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Ditto";
 			};
 			name = Release;
 		};

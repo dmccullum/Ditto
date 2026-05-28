@@ -90,8 +90,13 @@ struct SnippetCard: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 4) {
+                Text("\(snippet.content.count) chars")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Spacer()
                 Image(systemName: "doc.on.doc")
                 Text("Click to copy")
+                    .foregroundStyle(accent.opacity(isHovering ? 0.9 : 0.0))
             }
             .font(.caption2.weight(.medium))
             .foregroundStyle(accent.opacity(isHovering ? 0.9 : 0.0))
@@ -133,6 +138,42 @@ struct SnippetCard: View {
     private func delete() {
         modelContext.delete(snippet)
         try? modelContext.save()
+    }
+}
+
+/// A dashed "+" tile shown at the end of a populated grid to add a snippet.
+struct AddSnippetCard: View {
+    var action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.title2.weight(.semibold))
+                Text("New Snippet")
+                    .font(.subheadline.weight(.medium))
+            }
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, minHeight: 110)
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.secondary.opacity(isHovering ? 0.12 : 0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(
+                        .secondary.opacity(isHovering ? 0.6 : 0.3),
+                        style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])
+                    )
+            )
+            .scaleEffect(isHovering ? 1.02 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovering)
+        .help("Add a new snippet")
     }
 }
 
