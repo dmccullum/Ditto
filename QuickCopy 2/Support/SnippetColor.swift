@@ -41,9 +41,31 @@ enum SnippetColor: String, CaseIterable, Identifiable {
 /// A curated set of SF Symbols that read well as category icons.
 enum CategorySymbol {
     static let options: [String] = [
-        "number", "link", "text.quote", "star.fill", "heart.fill",
-        "bolt.fill", "flame.fill", "tag.fill", "bookmark.fill", "megaphone.fill",
-        "bubble.left.fill", "at", "calendar", "cart.fill", "globe",
-        "paintpalette.fill", "camera.fill", "music.note", "envelope.fill", "person.fill"
+        // Text & writing
+        "textformat", "paragraph", "square.and.pencil", "note.text",
+        "text.alignleft", "text.cursor", "signature", "character",
+
+        // Code & technical
+        "curlybraces", "terminal.fill", "function", "command", "keyboard",
+
+        // Lists & structure
+        "list.bullet", "list.number", "checklist", "pencil.and.list",
+
+        // Documents
+        "doc.text.fill", "text.quote", "number",
+
+        // Links & social
+        "link", "at", "bubble.left.fill", "megaphone.fill", "envelope.fill",
+
+        // Creative & content
+        "wand.and.stars", "sparkles", "arrow.triangle.2.circlepath",
+        "paintpalette.fill", "camera.fill", "music.note",
+
+        // Organisation
+        "tag.fill", "bookmark.fill", "star.fill", "heart.fill",
+        "bolt.fill", "flame.fill", "calendar", "clock",
+
+        // People & world
+        "person.fill", "person.2.fill", "globe",
     ]
 }

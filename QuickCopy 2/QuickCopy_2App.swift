@@ -14,6 +14,8 @@ import AppKit
 final class AppCommands {
     var createSnippet = false
     var createCategory = false
+    var exportLibrary = false
+    var importLibrary = false
 }
 
 @main
@@ -25,10 +27,19 @@ struct QuickCopy_2App: App {
     @State private var settings = AppSettings()
 
     init() {
-        do {
-            container = try ModelContainer(for: Snippet.self, Category.self)
-        } catch {
-            fatalError("Could not create the SwiftData container: \(error)")
+        let schema = Schema([Snippet.self, Category.self])
+        // CloudKit sync: keeps your library in sync across Macs automatically.
+        // Requires the iCloud + CloudKit capability to be enabled in Xcode
+        // (Signing & Capabilities → iCloud → CloudKit, container: iCloud.com.danielmccullum.ditto).
+        // Falls back to local-only if CloudKit is unavailable (e.g. not yet configured).
+        let cloudConfig = ModelConfiguration(
+            schema: schema,
+            cloudKitDatabase: .private("iCloud.com.danielmccullum.ditto")
+        )
+        if let c = try? ModelContainer(for: schema, configurations: [cloudConfig]) {
+            container = c
+        } else {
+            container = try! ModelContainer(for: Snippet.self, Category.self)
         }
         // Seed example content on first launch.
         SampleData.seedIfNeeded(container.mainContext)
@@ -84,6 +95,14 @@ struct DittoCommands: Commands {
                 commands.createCategory = true
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
+        }
+
+        // Export / Import under the File menu.
+        CommandGroup(after: .newItem) {
+            Divider()
+            Button("Export Library…") { commands.exportLibrary = true }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+            Button("Import Library…") { commands.importLibrary = true }
         }
 
         // A reliable way back to the window after closing it.

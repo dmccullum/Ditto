@@ -24,9 +24,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		CEE2CDAF2FC86C9100AF51F7 /* QuickCopy 2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "QuickCopy 2.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		CEE2CDBC2FC86C9300AF51F7 /* QuickCopy 2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "QuickCopy 2Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		CEE2CDC62FC86C9300AF51F7 /* QuickCopy 2UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "QuickCopy 2UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CEE2CDAF2FC86C9100AF51F7 /* Ditto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ditto.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CEE2CDBC2FC86C9300AF51F7 /* DittoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DittoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CEE2CDC62FC86C9300AF51F7 /* DittoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DittoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -85,9 +85,9 @@
 		CEE2CDB02FC86C9100AF51F7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CEE2CDAF2FC86C9100AF51F7 /* QuickCopy 2.app */,
-				CEE2CDBC2FC86C9300AF51F7 /* QuickCopy 2Tests.xctest */,
-				CEE2CDC62FC86C9300AF51F7 /* QuickCopy 2UITests.xctest */,
+				CEE2CDAF2FC86C9100AF51F7 /* Ditto.app */,
+				CEE2CDBC2FC86C9300AF51F7 /* DittoTests.xctest */,
+				CEE2CDC62FC86C9300AF51F7 /* DittoUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +95,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		CEE2CDAE2FC86C9100AF51F7 /* QuickCopy 2 */ = {
+		CEE2CDAE2FC86C9100AF51F7 /* Ditto */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CEE2CDD02FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "QuickCopy 2" */;
+			buildConfigurationList = CEE2CDD02FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "Ditto" */;
 			buildPhases = (
 				CEE2CDAB2FC86C9100AF51F7 /* Sources */,
 				CEE2CDAC2FC86C9100AF51F7 /* Frameworks */,
@@ -110,16 +110,16 @@
 			fileSystemSynchronizedGroups = (
 				CEE2CDB12FC86C9100AF51F7 /* QuickCopy 2 */,
 			);
-			name = "QuickCopy 2";
+			name = Ditto;
 			packageProductDependencies = (
 			);
 			productName = "QuickCopy 2";
-			productReference = CEE2CDAF2FC86C9100AF51F7 /* QuickCopy 2.app */;
+			productReference = CEE2CDAF2FC86C9100AF51F7 /* Ditto.app */;
 			productType = "com.apple.product-type.application";
 		};
-		CEE2CDBB2FC86C9300AF51F7 /* QuickCopy 2Tests */ = {
+		CEE2CDBB2FC86C9300AF51F7 /* DittoTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CEE2CDD32FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "QuickCopy 2Tests" */;
+			buildConfigurationList = CEE2CDD32FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "DittoTests" */;
 			buildPhases = (
 				CEE2CDB82FC86C9300AF51F7 /* Sources */,
 				CEE2CDB92FC86C9300AF51F7 /* Frameworks */,
@@ -133,16 +133,16 @@
 			fileSystemSynchronizedGroups = (
 				CEE2CDBF2FC86C9300AF51F7 /* QuickCopy 2Tests */,
 			);
-			name = "QuickCopy 2Tests";
+			name = DittoTests;
 			packageProductDependencies = (
 			);
 			productName = "QuickCopy 2Tests";
-			productReference = CEE2CDBC2FC86C9300AF51F7 /* QuickCopy 2Tests.xctest */;
+			productReference = CEE2CDBC2FC86C9300AF51F7 /* DittoTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		CEE2CDC52FC86C9300AF51F7 /* QuickCopy 2UITests */ = {
+		CEE2CDC52FC86C9300AF51F7 /* DittoUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CEE2CDD62FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "QuickCopy 2UITests" */;
+			buildConfigurationList = CEE2CDD62FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "DittoUITests" */;
 			buildPhases = (
 				CEE2CDC22FC86C9300AF51F7 /* Sources */,
 				CEE2CDC32FC86C9300AF51F7 /* Frameworks */,
@@ -156,11 +156,11 @@
 			fileSystemSynchronizedGroups = (
 				CEE2CDC92FC86C9300AF51F7 /* QuickCopy 2UITests */,
 			);
-			name = "QuickCopy 2UITests";
+			name = DittoUITests;
 			packageProductDependencies = (
 			);
 			productName = "QuickCopy 2UITests";
-			productReference = CEE2CDC62FC86C9300AF51F7 /* QuickCopy 2UITests.xctest */;
+			productReference = CEE2CDC62FC86C9300AF51F7 /* DittoUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = CEE2CDAA2FC86C9100AF51F7 /* Build configuration list for PBXProject "QuickCopy 2" */;
+			buildConfigurationList = CEE2CDAA2FC86C9100AF51F7 /* Build configuration list for PBXProject "Ditto" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -200,9 +200,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				CEE2CDAE2FC86C9100AF51F7 /* QuickCopy 2 */,
-				CEE2CDBB2FC86C9300AF51F7 /* QuickCopy 2Tests */,
-				CEE2CDC52FC86C9300AF51F7 /* QuickCopy 2UITests */,
+				CEE2CDAE2FC86C9100AF51F7 /* Ditto */,
+				CEE2CDBB2FC86C9300AF51F7 /* DittoTests */,
+				CEE2CDC52FC86C9300AF51F7 /* DittoUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,12 +258,12 @@
 /* Begin PBXTargetDependency section */
 		CEE2CDBE2FC86C9300AF51F7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CEE2CDAE2FC86C9100AF51F7 /* QuickCopy 2 */;
+			target = CEE2CDAE2FC86C9100AF51F7 /* Ditto */;
 			targetProxy = CEE2CDBD2FC86C9300AF51F7 /* PBXContainerItemProxy */;
 		};
 		CEE2CDC82FC86C9300AF51F7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CEE2CDAE2FC86C9100AF51F7 /* QuickCopy 2 */;
+			target = CEE2CDAE2FC86C9100AF51F7 /* Ditto */;
 			targetProxy = CEE2CDC72FC86C9300AF51F7 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -399,14 +399,14 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.danielmccullum.ditto";
+				PRODUCT_BUNDLE_IDENTIFIER = com.danielmccullum.ditto;
 				PRODUCT_MODULE_NAME = QuickCopy_2;
 				PRODUCT_NAME = Ditto;
 				REGISTER_APP_GROUPS = YES;
@@ -431,14 +431,14 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.danielmccullum.ditto";
+				PRODUCT_BUNDLE_IDENTIFIER = com.danielmccullum.ditto;
 				PRODUCT_MODULE_NAME = QuickCopy_2;
 				PRODUCT_NAME = Ditto;
 				REGISTER_APP_GROUPS = YES;
@@ -530,7 +530,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CEE2CDAA2FC86C9100AF51F7 /* Build configuration list for PBXProject "QuickCopy 2" */ = {
+		CEE2CDAA2FC86C9100AF51F7 /* Build configuration list for PBXProject "Ditto" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CEE2CDCE2FC86C9300AF51F7 /* Debug */,
@@ -539,7 +539,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CEE2CDD02FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "QuickCopy 2" */ = {
+		CEE2CDD02FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "Ditto" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CEE2CDD12FC86C9300AF51F7 /* Debug */,
@@ -548,7 +548,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CEE2CDD32FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "QuickCopy 2Tests" */ = {
+		CEE2CDD32FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "DittoTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CEE2CDD42FC86C9300AF51F7 /* Debug */,
@@ -557,7 +557,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CEE2CDD62FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "QuickCopy 2UITests" */ = {
+		CEE2CDD62FC86C9300AF51F7 /* Build configuration list for PBXNativeTarget "DittoUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CEE2CDD72FC86C9300AF51F7 /* Debug */,

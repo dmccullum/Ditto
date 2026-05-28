@@ -63,6 +63,16 @@ struct SnippetCard: View {
         .contextMenu {
             Button("Copy", systemImage: "doc.on.doc", action: copy)
             Button("Edit…", systemImage: "pencil", action: onEdit)
+            Button("Duplicate", systemImage: "plus.square.on.square", action: duplicate)
+            Divider()
+            Button(snippet.isPinned ? "Unpin" : "Pin",
+                   systemImage: snippet.isPinned ? "pin.slash" : "pin",
+                   action: togglePin)
+            if let url = snippet.urlValue {
+                Button("Open Link", systemImage: "safari") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
             Divider()
             Button("Delete", systemImage: "trash", role: .destructive, action: delete)
         }
@@ -79,6 +89,12 @@ struct SnippetCard: View {
                     .font(.headline)
                     .lineLimit(1)
                 Spacer(minLength: 0)
+                if snippet.isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption2)
+                        .foregroundStyle(accent.opacity(0.7))
+                        .rotationEffect(.degrees(45))
+                }
             }
 
             Text(snippet.preview)
@@ -133,6 +149,23 @@ struct SnippetCard: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
             withAnimation(.easeOut(duration: 0.25)) { didCopy = false }
         }
+    }
+
+    private func duplicate() {
+        let copy = Snippet(
+            title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
+            content: snippet.content,
+            sortIndex: snippet.sortIndex + 1,
+            isPinned: false,
+            category: snippet.category
+        )
+        modelContext.insert(copy)
+        try? modelContext.save()
+    }
+
+    private func togglePin() {
+        snippet.isPinned.toggle()
+        try? modelContext.save()
     }
 
     private func delete() {

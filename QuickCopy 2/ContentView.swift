@@ -34,12 +34,14 @@ struct ContentView: View {
     @State private var selection: SidebarSelection = .all
     @State private var searchText = ""
 
-    // Sheet state
+    // Sheet / panel state
     @State private var editingSnippet: Snippet?
     @State private var isCreatingSnippet = false
     @State private var editingCategory: Category?
     @State private var isCreatingCategory = false
     @State private var pasteDraft: PasteDraft?
+    @State private var isExporting = false
+    @State private var isImporting = false
 
     // The snippet currently being dragged, captured when the drag starts.
     @State private var draggedSnippet: Snippet?
@@ -81,6 +83,24 @@ struct ContentView: View {
         .onChange(of: appCommands.createCategory, initial: true) { _, create in
             if create { isCreatingCategory = true; appCommands.createCategory = false }
         }
+        .onChange(of: appCommands.exportLibrary) { _, export in
+            if export { isExporting = true; appCommands.exportLibrary = false }
+        }
+        .onChange(of: appCommands.importLibrary) { _, imp in
+            if imp { isImporting = true; appCommands.importLibrary = false }
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: DittoDocument(data: (try? exportDitto(snippets: allSnippets, categories: categories)) ?? Data()),
+            contentType: .json,
+            defaultFilename: "Ditto Library \(Date.now.formatted(.dateTime.year().month().day()))"
+        ) { _ in }
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
+            if case .success(let url) = result,
+               let data = try? Data(contentsOf: url) {
+                try? importDitto(data: data, into: modelContext)
+            }
+        }
         .onChange(of: draggedSnippet) { _, dragged in
             // Snapshot the current order only when a drag begins. The rest of
             // the time the grid renders straight from the query, so ordinary
@@ -116,14 +136,25 @@ struct ContentView: View {
                     )
                 )
 
-                Label("Frequent", systemImage: "flame.fill")
-                    .symbolRenderingMode(.multicolor)
-                    .padding(.vertical, 2)
-                    .tag(SidebarSelection.frequent)
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill")
+                        .symbolRenderingMode(.multicolor)
+                        .frame(width: 18)
+                    Text("Frequent")
+                    Spacer()
+                }
+                .padding(.vertical, 2)
+                .tag(SidebarSelection.frequent)
 
-                Label("Recent", systemImage: "clock.fill")
-                    .padding(.vertical, 2)
-                    .tag(SidebarSelection.recent)
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.fill")
+                        .foregroundStyle(.tint)
+                        .frame(width: 18)
+                    Text("Recent")
+                    Spacer()
+                }
+                .padding(.vertical, 2)
+                .tag(SidebarSelection.recent)
             }
 
             Section("Categories") {
@@ -136,15 +167,15 @@ struct ContentView: View {
         }
         .navigationTitle("Ditto")
         .frame(minWidth: 220)
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                isCreatingCategory = true
-            } label: {
-                Label("New Category", systemImage: "plus.circle.fill")
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    isCreatingCategory = true
+                } label: {
+                    Image(systemName: "folder.badge.plus")
+                }
+                .help("New Category (⌘⇧N)")
             }
-            .buttonStyle(.plain)
-            .padding(10)
         }
     }
 
@@ -295,9 +326,18 @@ struct ContentView: View {
 
         switch selection {
         case .all:
-            snippets = allSnippets
+            // Pinned items float to the top; within each group, preserve sortIndex order.
+            snippets = allSnippets.sorted {
+                if $0.isPinned != $1.isPinned { return $0.isPinned }
+                return $0.sortIndex < $1.sortIndex
+            }
         case .category(let category):
-            snippets = allSnippets.filter { $0.category?.persistentModelID == category.persistentModelID }
+            snippets = allSnippets
+                .filter { $0.category?.persistentModelID == category.persistentModelID }
+                .sorted {
+                    if $0.isPinned != $1.isPinned { return $0.isPinned }
+                    return $0.sortIndex < $1.sortIndex
+                }
         case .frequent:
             snippets = allSnippets
                 .filter { $0.copyCount > 0 }

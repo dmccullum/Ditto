@@ -16,12 +16,14 @@ final class Snippet {
     var createdAt: Date
     var lastCopiedAt: Date?
     var copyCount: Int
+    var isPinned: Bool
     var category: Category?
 
     init(
         title: String = "",
         content: String,
         sortIndex: Int = 0,
+        isPinned: Bool = false,
         category: Category? = nil
     ) {
         self.title = title
@@ -29,7 +31,17 @@ final class Snippet {
         self.sortIndex = sortIndex
         self.createdAt = .now
         self.copyCount = 0
+        self.isPinned = isPinned
         self.category = category
+    }
+
+    /// Non-nil when content is a single valid http/https URL.
+    var urlValue: URL? {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://"),
+              !trimmed.contains("\n"),
+              let url = URL(string: trimmed) else { return nil }
+        return url
     }
 
     /// What to show as the row's heading: the user's title, or the first

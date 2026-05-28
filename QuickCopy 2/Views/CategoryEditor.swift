@@ -81,7 +81,7 @@ struct CategoryEditor: View {
             }
             .padding()
         }
-        .frame(width: 420, height: 470)
+        .frame(width: 420, height: 560)
         .navigationTitle(isEditing ? "Edit Category" : "New Category")
         .onAppear(perform: loadInitialValues)
     }
