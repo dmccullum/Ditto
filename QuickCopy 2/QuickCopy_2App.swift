@@ -28,20 +28,19 @@ struct QuickCopy_2App: App {
 
     init() {
         let schema = Schema([Snippet.self, Category.self])
-        // CloudKit sync: keeps your library in sync across Macs automatically.
-        // Requires the iCloud + CloudKit capability to be enabled in Xcode
-        // (Signing & Capabilities → iCloud → CloudKit, container: iCloud.com.danielmccullum.ditto).
-        // Falls back to local-only if CloudKit is unavailable (e.g. not yet configured).
-        let cloudConfig = ModelConfiguration(
-            schema: schema,
-            cloudKitDatabase: .private("iCloud.com.danielmccullum.ditto")
-        )
-        if let c = try? ModelContainer(for: schema, configurations: [cloudConfig]) {
-            container = c
-        } else {
-            container = try! ModelContainer(for: Snippet.self, Category.self)
+        do {
+            container = try ModelContainer(for: schema)
+        } catch {
+            // Store migration failed (e.g. after a schema change). Reset to a
+            // clean state — SampleData will repopulate on next launch.
+            if let support = FileManager.default
+                .urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                for name in ["default.store", "default.store-shm", "default.store-wal"] {
+                    try? FileManager.default.removeItem(at: support.appendingPathComponent(name))
+                }
+            }
+            container = try! ModelContainer(for: schema)
         }
-        // Seed example content on first launch.
         SampleData.seedIfNeeded(container.mainContext)
     }
 
