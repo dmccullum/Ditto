@@ -45,6 +45,7 @@ struct ContentView: View {
     @State private var pasteDraft: PasteDraft?
     @State private var isExporting = false
     @State private var isImporting = false
+    @State private var exportDocument: DittoDocument?
 
     // The snippet currently being dragged, captured when the drag starts.
     @State private var draggedSnippet: Snippet?
@@ -87,7 +88,13 @@ struct ContentView: View {
             if create { isCreatingCategory = true; appCommands.createCategory = false }
         }
         .onChange(of: appCommands.exportLibrary) { _, export in
-            if export { isExporting = true; appCommands.exportLibrary = false }
+            if export {
+                if let data = try? exportDitto(snippets: allSnippets, categories: categories) {
+                    exportDocument = DittoDocument(data: data)
+                    isExporting = true
+                }
+                appCommands.exportLibrary = false
+            }
         }
         .onChange(of: appCommands.importLibrary) { _, imp in
             if imp { isImporting = true; appCommands.importLibrary = false }
@@ -103,10 +110,10 @@ struct ContentView: View {
         }
         .fileExporter(
             isPresented: $isExporting,
-            document: DittoDocument(data: (try? exportDitto(snippets: allSnippets, categories: categories)) ?? Data()),
+            document: exportDocument ?? DittoDocument(data: Data()),
             contentType: .json,
             defaultFilename: "Ditto Library \(Date.now.formatted(.dateTime.year().month().day()))"
-        ) { _ in }
+        ) { _ in exportDocument = nil }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
             if case .success(let url) = result,
                let data = try? Data(contentsOf: url) {
