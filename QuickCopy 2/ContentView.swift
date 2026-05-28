@@ -43,9 +43,6 @@ struct ContentView: View {
     @State private var editingCategory: Category?
     @State private var isCreatingCategory = false
     @State private var pasteDraft: PasteDraft?
-    @State private var isExporting = false
-    @State private var isImporting = false
-    @State private var exportDocument: DittoDocument?
 
     // The snippet currently being dragged, captured when the drag starts.
     @State private var draggedSnippet: Snippet?
@@ -89,15 +86,12 @@ struct ContentView: View {
         }
         .onChange(of: appCommands.exportLibrary) { _, export in
             if export {
-                if let data = try? exportDitto(snippets: allSnippets, categories: categories) {
-                    exportDocument = DittoDocument(data: data)
-                    isExporting = true
-                }
                 appCommands.exportLibrary = false
+                runExport()
             }
         }
         .onChange(of: appCommands.importLibrary) { _, imp in
-            if imp { isImporting = true; appCommands.importLibrary = false }
+            if imp { appCommands.importLibrary = false; runImport() }
         }
         .onChange(of: appCommands.increaseColumns) { _, v in
             if v { columnCount = max(1, columnCount - 1); appCommands.increaseColumns = false }
@@ -107,18 +101,6 @@ struct ContentView: View {
         }
         .onChange(of: appCommands.resetColumns) { _, v in
             if v { columnCount = 3; appCommands.resetColumns = false }
-        }
-        .fileExporter(
-            isPresented: $isExporting,
-            document: exportDocument ?? DittoDocument(data: Data()),
-            contentType: .json,
-            defaultFilename: "Ditto Library \(Date.now.formatted(.dateTime.year().month().day()))"
-        ) { _ in exportDocument = nil }
-        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
-            if case .success(let url) = result,
-               let data = try? Data(contentsOf: url) {
-                try? importDitto(data: data, into: modelContext)
-            }
         }
         .onChange(of: draggedSnippet) { _, dragged in
             // Snapshot the current order only when a drag begins. The rest of
@@ -464,6 +446,28 @@ struct ContentView: View {
     private func move(_ snippet: Snippet, to category: Category?) {
         snippet.category = category
         try? modelContext.save()
+    }
+
+    private func runExport() {
+        guard let data = try? exportDitto(snippets: allSnippets, categories: categories) else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "Ditto Library \(Date.now.formatted(.dateTime.year().month().day()))"
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            try? data.write(to: url)
+        }
+    }
+
+    private func runImport() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.begin { response in
+            guard response == .OK, let url = panel.url,
+                  let data = try? Data(contentsOf: url) else { return }
+            try? importDitto(data: data, into: modelContext)
+        }
     }
 }
 
