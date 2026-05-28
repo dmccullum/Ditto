@@ -92,6 +92,15 @@ struct ContentView: View {
         .onChange(of: appCommands.importLibrary) { _, imp in
             if imp { isImporting = true; appCommands.importLibrary = false }
         }
+        .onChange(of: appCommands.increaseColumns) { _, v in
+            if v { columnCount = max(1, columnCount - 1); appCommands.increaseColumns = false }
+        }
+        .onChange(of: appCommands.decreaseColumns) { _, v in
+            if v { columnCount = min(4, columnCount + 1); appCommands.decreaseColumns = false }
+        }
+        .onChange(of: appCommands.resetColumns) { _, v in
+            if v { columnCount = 3; appCommands.resetColumns = false }
+        }
         .fileExporter(
             isPresented: $isExporting,
             document: DittoDocument(data: (try? exportDitto(snippets: allSnippets, categories: categories)) ?? Data()),
@@ -240,30 +249,28 @@ struct ContentView: View {
         .navigationTitle(detailTitle)
         .searchable(text: $searchText, placement: .toolbar, prompt: "Search snippets")
         .toolbar {
+            // Single item so SwiftUI renders them left-to-right in declaration order.
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    isCreatingSnippet = true
-                } label: {
-                    Label("New Snippet", systemImage: "plus")
-                }
-            }
-            ToolbarItem(placement: .automatic) {
-                HStack(spacing: 0) {
-                    Button {
-                        columnCount = min(4, columnCount + 1)
-                    } label: {
+                HStack(spacing: 2) {
+                    Button { columnCount = min(4, columnCount + 1) } label: {
                         Image(systemName: "minus.magnifyingglass")
                     }
                     .disabled(columnCount >= 4)
+                    .help("Zoom Out (⌘–)")
 
-                    Button {
-                        columnCount = max(1, columnCount - 1)
-                    } label: {
+                    Button { columnCount = max(1, columnCount - 1) } label: {
                         Image(systemName: "plus.magnifyingglass")
                     }
                     .disabled(columnCount <= 1)
+                    .help("Zoom In (⌘+)")
+
+                    Divider().frame(height: 16).padding(.horizontal, 4)
+
+                    Button { isCreatingSnippet = true } label: {
+                        Image(systemName: "plus")
+                    }
+                    .help("New Snippet (⌘N)")
                 }
-                .help("Adjust card size")
             }
         }
     }

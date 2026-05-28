@@ -16,6 +16,9 @@ final class AppCommands {
     var createCategory = false
     var exportLibrary = false
     var importLibrary = false
+    var increaseColumns = false
+    var decreaseColumns = false
+    var resetColumns = false
 }
 
 @main
@@ -102,6 +105,16 @@ struct DittoCommands: Commands {
             Button("Export Library…") { commands.exportLibrary = true }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
             Button("Import Library…") { commands.importLibrary = true }
+        }
+
+        // View menu: card density controls.
+        CommandMenu("View") {
+            Button("Zoom In") { commands.increaseColumns = true }
+                .keyboardShortcut("+", modifiers: .command)
+            Button("Zoom Out") { commands.decreaseColumns = true }
+                .keyboardShortcut("-", modifiers: .command)
+            Divider()
+            Button("Actual Size") { commands.resetColumns = true }
         }
 
         // A reliable way back to the window after closing it.
