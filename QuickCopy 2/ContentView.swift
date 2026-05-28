@@ -34,6 +34,9 @@ struct ContentView: View {
     @State private var selection: SidebarSelection = .all
     @State private var searchText = ""
 
+    // Persisted card size (minimum column width in the grid).
+    @AppStorage("snippetCardWidth") private var cardWidth: Double = 240
+
     // Sheet / panel state
     @State private var editingSnippet: Snippet?
     @State private var isCreatingSnippet = false
@@ -244,13 +247,31 @@ struct ContentView: View {
                     Label("New Snippet", systemImage: "plus")
                 }
             }
+            ToolbarItem(placement: .automatic) {
+                HStack(spacing: 0) {
+                    Button {
+                        cardWidth = max(160, cardWidth - 40)
+                    } label: {
+                        Image(systemName: "minus.magnifyingglass")
+                    }
+                    .disabled(cardWidth <= 160)
+
+                    Button {
+                        cardWidth = min(400, cardWidth + 40)
+                    } label: {
+                        Image(systemName: "plus.magnifyingglass")
+                    }
+                    .disabled(cardWidth >= 400)
+                }
+                .help("Adjust card size")
+            }
         }
     }
 
     private var snippetGrid: some View {
         ScrollView {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 240, maximum: 360), spacing: 16)],
+                columns: [GridItem(.adaptive(minimum: cardWidth, maximum: cardWidth + 120), spacing: 16)],
                 spacing: 16
             ) {
                 ForEach(gridSnippets) { snippet in

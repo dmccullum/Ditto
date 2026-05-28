@@ -49,7 +49,7 @@ enum CategorySymbol {
         "curlybraces", "terminal.fill", "function", "command", "keyboard",
 
         // Lists & structure
-        "list.bullet", "list.number", "checklist", "pencil.and.list",
+        "list.bullet", "list.number", "checklist", "list.and.pencil",
 
         // Documents
         "doc.text.fill", "text.quote", "number",
