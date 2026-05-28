@@ -18,6 +18,7 @@ struct CategoryEditor: View {
     @State private var name = ""
     @State private var symbolName = "tag.fill"
     @State private var colorName = "blue"
+    @FocusState private var nameFocused: Bool
 
     private var isEditing: Bool { category != nil }
     private var accent: Color { SnippetColor.color(for: colorName) }
@@ -37,6 +38,7 @@ struct CategoryEditor: View {
                             prompt: Text("e.g. Hashtags").foregroundStyle(.secondary)
                         ) { EmptyView() }
                         .multilineTextAlignment(.leading)
+                        .focused($nameFocused)
                     }
                 }
 
@@ -87,7 +89,10 @@ struct CategoryEditor: View {
         }
         .frame(width: 420, height: 560)
         .navigationTitle(isEditing ? "Edit Category" : "New Category")
-        .onAppear(perform: loadInitialValues)
+        .onAppear {
+            loadInitialValues()
+            DispatchQueue.main.async { nameFocused = true }
+        }
     }
 
     private func loadInitialValues() {

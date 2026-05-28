@@ -54,6 +54,10 @@ struct SnippetEditor: View {
                             .strokeBorder(.quaternary)
                     )
                     .focused($focus, equals: .content)
+                    .onKeyPress(.tab) {
+                        focus = .name
+                        return .handled
+                    }
             }
 
             field("Name (optional)") {
