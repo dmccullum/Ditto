@@ -32,7 +32,10 @@ struct CategoryEditor: View {
                         Image(systemName: symbolName)
                             .foregroundStyle(accent)
                             .frame(width: 24)
-                        TextField("e.g. Hashtags", text: $name)
+                        TextField(
+                            text: $name,
+                            prompt: Text("e.g. Hashtags").foregroundStyle(.secondary)
+                        ) { EmptyView() }
                     }
                 }
 
