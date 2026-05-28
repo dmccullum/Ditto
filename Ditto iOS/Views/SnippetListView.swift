@@ -44,6 +44,8 @@ struct SnippetListView: View {
                 List {
                     ForEach(filtered) { snippet in
                         SnippetRow(snippet: snippet, isCopied: copiedSnippetID == snippet.persistentModelID)
+                            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                            .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                             .contentShape(Rectangle())
                             .onTapGesture { copy(snippet) }
                             .swipeActions(edge: .leading) {
@@ -127,6 +129,5 @@ struct SnippetRow: View {
                     .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.vertical, 4)
     }
 }
