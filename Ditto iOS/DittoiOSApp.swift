@@ -7,18 +7,24 @@ struct DittoiOSApp: App {
 
     init() {
         let schema = Schema([Snippet.self, Category.self])
+        // Try CloudKit first; fall back to local store if iCloud isn't available
+        // (e.g. free Personal Team without the CloudKit entitlement).
+        let cloudConfig = ModelConfiguration(cloudKitDatabase: .automatic)
+        let localConfig = ModelConfiguration()
         do {
-            let config = ModelConfiguration(cloudKitDatabase: .automatic)
-            container = try ModelContainer(for: schema, configurations: config)
+            container = try ModelContainer(for: schema, configurations: cloudConfig)
         } catch {
-            if let support = FileManager.default
-                .urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-                for name in ["default.store", "default.store-shm", "default.store-wal"] {
-                    try? FileManager.default.removeItem(at: support.appendingPathComponent(name))
+            do {
+                container = try ModelContainer(for: schema, configurations: localConfig)
+            } catch {
+                if let support = FileManager.default
+                    .urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                    for name in ["default.store", "default.store-shm", "default.store-wal"] {
+                        try? FileManager.default.removeItem(at: support.appendingPathComponent(name))
+                    }
                 }
+                container = try! ModelContainer(for: schema, configurations: localConfig)
             }
-            let config = ModelConfiguration(cloudKitDatabase: .automatic)
-            container = try! ModelContainer(for: schema, configurations: config)
         }
         SampleData.seedIfNeeded(container.mainContext)
     }
