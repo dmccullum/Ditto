@@ -36,6 +36,7 @@ struct CategoryEditor: View {
                             text: $name,
                             prompt: Text("e.g. Hashtags").foregroundStyle(.secondary)
                         ) { EmptyView() }
+                        .multilineTextAlignment(.leading)
                     }
                 }
 
