@@ -87,11 +87,11 @@ struct ContentView: View {
         .onChange(of: appCommands.exportLibrary) { _, export in
             if export {
                 appCommands.exportLibrary = false
-                runExport()
+                DispatchQueue.main.async { runExport() }
             }
         }
         .onChange(of: appCommands.importLibrary) { _, imp in
-            if imp { appCommands.importLibrary = false; runImport() }
+            if imp { appCommands.importLibrary = false; DispatchQueue.main.async { runImport() } }
         }
         .onChange(of: appCommands.increaseColumns) { _, v in
             if v { columnCount = max(1, columnCount - 1); appCommands.increaseColumns = false }
@@ -449,24 +449,42 @@ struct ContentView: View {
     }
 
     private func runExport() {
-        guard let data = try? exportDitto(snippets: allSnippets, categories: categories) else { return }
+        let data: Data
+        do {
+            data = try exportDitto(snippets: allSnippets, categories: categories)
+        } catch {
+            showAlert("Export failed", message: error.localizedDescription)
+            return
+        }
+
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
         panel.nameFieldStringValue = "Ditto Library \(Date.now.formatted(.dateTime.year().month().day()))"
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            try? data.write(to: url)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            showAlert("Could not write file", message: error.localizedDescription)
         }
+    }
+
+    private func showAlert(_ title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.runModal()
     }
 
     private func runImport() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
-        panel.begin { response in
-            guard response == .OK, let url = panel.url,
-                  let data = try? Data(contentsOf: url) else { return }
-            try? importDitto(data: data, into: modelContext)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let data = try Data(contentsOf: url)
+            try importDitto(data: data, into: modelContext)
+        } catch {
+            showAlert("Import failed", message: error.localizedDescription)
         }
     }
 }
