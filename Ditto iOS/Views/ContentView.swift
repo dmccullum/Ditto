@@ -11,7 +11,7 @@ struct ContentView: View {
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
 
-    @State private var selection: SidebarSelection = .all
+    @State private var selection: SidebarSelection? = .all
     @State private var searchText = ""
     @State private var isCreatingSnippet = false
     @State private var isCreatingCategory = false
@@ -26,7 +26,7 @@ struct ContentView: View {
             sidebar
         } detail: {
             SnippetListView(
-                selection: selection,
+                selection: selection ?? .all,
                 searchText: searchText,
                 allSnippets: allSnippets
             )
@@ -57,7 +57,7 @@ struct ContentView: View {
     }
 
     private var navigationTitle: String {
-        switch selection {
+        switch selection ?? .all {
         case .all:    return "All Snippets"
         case .pinned: return "Pinned"
         case .category(let cat): return cat.name
