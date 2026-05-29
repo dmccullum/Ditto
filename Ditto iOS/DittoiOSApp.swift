@@ -17,12 +17,9 @@ struct DittoiOSApp: App {
             do {
                 container = try ModelContainer(for: schema, configurations: localConfig)
             } catch {
-                if let support = FileManager.default
-                    .urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-                    for name in ["default.store", "default.store-shm", "default.store-wal"] {
-                        try? FileManager.default.removeItem(at: support.appendingPathComponent(name))
-                    }
-                }
+                // Last resort: the local store can't be opened. Move it aside —
+                // never delete — so the data stays recoverable, then start fresh.
+                StoreRecovery.backupStore()
                 container = try! ModelContainer(for: schema, configurations: localConfig)
             }
         }
