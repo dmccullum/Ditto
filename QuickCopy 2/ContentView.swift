@@ -250,46 +250,45 @@ struct ContentView: View {
         .navigationTitle(detailTitle)
         .searchable(text: $searchText, placement: .toolbar, prompt: "Search snippets")
         .toolbar {
-            // Single item so SwiftUI renders them left-to-right in declaration order.
-            ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: 2) {
-                    if isAllView {
-                        Menu {
-                            Picker("Group By", selection: groupingBinding) {
-                                ForEach(SnippetGrouping.allCases) { option in
-                                    Text(option.label).tag(option)
-                                }
+            // Native toolbar items: macOS auto-groups them into pills and fits
+            // each button's highlight, matching system apps like Reminders.
+            if isAllView {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Picker("Group By", selection: groupingBinding) {
+                            ForEach(SnippetGrouping.allCases) { option in
+                                Text(option.label).tag(option)
                             }
-                            .pickerStyle(.inline)
-                        } label: {
-                            Image(systemName: settings.grouping == .none
-                                  ? "rectangle.grid.1x2" : "rectangle.grid.1x2.fill")
                         }
-                        .menuIndicator(.hidden)
-                        .help("Group By")
-
-                        Divider().frame(height: 16).padding(.horizontal, 4)
+                        .pickerStyle(.inline)
+                    } label: {
+                        Image(systemName: settings.grouping == .none
+                              ? "rectangle.grid.1x2" : "rectangle.grid.1x2.fill")
                     }
-
-                    Button { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) } label: {
-                        Image(systemName: "minus.magnifyingglass")
-                    }
-                    .disabled(sizeLevel <= Self.minSizeLevel)
-                    .help("Zoom Out (⌘–)")
-
-                    Button { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1) } label: {
-                        Image(systemName: "plus.magnifyingglass")
-                    }
-                    .disabled(sizeLevel >= Self.maxSizeLevel)
-                    .help("Zoom In (⌘+)")
-
-                    Divider().frame(height: 16).padding(.horizontal, 4)
-
-                    Button { isCreatingSnippet = true } label: {
-                        Image(systemName: "plus")
-                    }
-                    .help("New Snippet (⌘N)")
+                    .menuIndicator(.hidden)
+                    .help("Group By")
                 }
+            }
+
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) } label: {
+                    Image(systemName: "minus.magnifyingglass")
+                }
+                .disabled(sizeLevel <= Self.minSizeLevel)
+                .help("Zoom Out (⌘–)")
+
+                Button { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1) } label: {
+                    Image(systemName: "plus.magnifyingglass")
+                }
+                .disabled(sizeLevel >= Self.maxSizeLevel)
+                .help("Zoom In (⌘+)")
+            }
+
+            ToolbarItem(placement: .primaryAction) {
+                Button { isCreatingSnippet = true } label: {
+                    Image(systemName: "plus")
+                }
+                .help("New Snippet (⌘N)")
             }
         }
     }
