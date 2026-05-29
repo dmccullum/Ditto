@@ -8,6 +8,7 @@ enum SidebarSelection: Hashable {
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.undoManager) private var undoManager
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
 
@@ -40,6 +41,8 @@ struct ContentView: View {
                 }
             }
         }
+        .onAppear { modelContext.undoManager = undoManager }
+        .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }
         .sheet(isPresented: $isCreatingSnippet) {
             SnippetEditorView(defaultCategory: selectedCategory)
         }

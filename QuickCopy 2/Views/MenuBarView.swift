@@ -12,6 +12,7 @@ import AppKit
 
 struct MenuBarView: View {
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
@@ -222,8 +223,13 @@ struct MenuBarView: View {
 
     private func copy(_ snippet: Snippet) {
         Clipboard.copy(snippet.content)
+        // Usage telemetry shouldn't land on the undo stack.
+        let undo = modelContext.undoManager
+        undo?.disableUndoRegistration()
         snippet.copyCount += 1
         snippet.lastCopiedAt = .now
+        try? modelContext.save()
+        undo?.enableUndoRegistration()
 
         withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
             justCopiedID = snippet.persistentModelID

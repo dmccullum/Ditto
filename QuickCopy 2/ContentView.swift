@@ -27,6 +27,7 @@ struct PasteDraft: Identifiable {
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.undoManager) private var undoManager
     @Environment(AppCommands.self) private var appCommands
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
@@ -71,6 +72,8 @@ struct ContentView: View {
         .sheet(item: $pasteDraft) { draft in
             SnippetEditor(snippet: nil, defaultCategory: selectedCategory, defaultContent: draft.text)
         }
+        .onAppear { modelContext.undoManager = undoManager }
+        .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }
         .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
             // Fires only when no text field consumes the paste, so normal
             // ⌘V in the search/editor fields still works.

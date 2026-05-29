@@ -81,9 +81,13 @@ struct SnippetListView: View {
 
     private func copy(_ snippet: Snippet) {
         UIPasteboard.general.string = snippet.content
+        // Usage telemetry shouldn't land on the undo stack.
+        let undo = modelContext.undoManager
+        undo?.disableUndoRegistration()
         snippet.copyCount += 1
         snippet.lastCopiedAt = .now
         try? modelContext.save()
+        undo?.enableUndoRegistration()
 
         withAnimation {
             copiedSnippetID = snippet.persistentModelID
