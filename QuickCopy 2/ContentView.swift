@@ -262,52 +262,36 @@ struct ContentView: View {
                             }
                             .pickerStyle(.inline)
                         } label: {
-                            toolbarIcon(settings.grouping == .none
-                                        ? "rectangle.grid.1x2" : "rectangle.grid.1x2.fill")
+                            Image(systemName: settings.grouping == .none
+                                  ? "rectangle.grid.1x2" : "rectangle.grid.1x2.fill")
                         }
                         .menuIndicator(.hidden)
-                        .buttonStyle(.borderless)
                         .help("Group By")
 
-                        toolbarSeparator
+                        Divider().frame(height: 16).padding(.horizontal, 4)
                     }
 
                     Button { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) } label: {
-                        toolbarIcon("minus.magnifyingglass")
+                        Image(systemName: "minus.magnifyingglass")
                     }
-                    .buttonStyle(.borderless)
                     .disabled(sizeLevel <= Self.minSizeLevel)
                     .help("Zoom Out (⌘–)")
 
                     Button { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1) } label: {
-                        toolbarIcon("plus.magnifyingglass")
+                        Image(systemName: "plus.magnifyingglass")
                     }
-                    .buttonStyle(.borderless)
                     .disabled(sizeLevel >= Self.maxSizeLevel)
                     .help("Zoom In (⌘+)")
 
-                    toolbarSeparator
+                    Divider().frame(height: 16).padding(.horizontal, 4)
 
                     Button { isCreatingSnippet = true } label: {
-                        toolbarIcon("plus")
+                        Image(systemName: "plus")
                     }
-                    .buttonStyle(.borderless)
                     .help("New Snippet (⌘N)")
                 }
             }
         }
-    }
-
-    /// A uniformly-sized icon so every toolbar control gets the same hover/press
-    /// highlight, whether it's a Button or a Menu.
-    private func toolbarIcon(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .frame(width: 26, height: 22)
-            .contentShape(Rectangle())
-    }
-
-    private var toolbarSeparator: some View {
-        Divider().frame(height: 16).padding(.horizontal, 4)
     }
 
     private var snippetGrid: some View {
