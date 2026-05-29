@@ -87,6 +87,7 @@ struct SnippetCard: View {
             Button("Copy", systemImage: "doc.on.doc", action: copy)
             Button("Edit…", systemImage: "pencil", action: onEdit)
             Button("Duplicate", systemImage: "plus.square.on.square", action: duplicate)
+            Button("Copy Share Link", systemImage: "link", action: copyShareLink)
             Divider()
             Button(snippet.isPinned ? "Unpin" : "Pin",
                    systemImage: snippet.isPinned ? "pin.slash" : "pin",
@@ -188,6 +189,15 @@ struct SnippetCard: View {
         )
         modelContext.insert(copy)
         try? modelContext.save()
+    }
+
+    /// Copy a self-contained ditto://import link for this snippet (and its
+    /// category, so the recipient files it correctly) to the clipboard.
+    private func copyShareLink() {
+        let categories = snippet.category.map { [$0] } ?? []
+        if let link = dittoImportLink(snippets: [snippet], categories: categories) {
+            Clipboard.copy(link.absoluteString)
+        }
     }
 
     private func togglePin() {
