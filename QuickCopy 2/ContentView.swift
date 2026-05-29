@@ -211,6 +211,9 @@ struct ContentView: View {
         .contextMenu {
             Button("Edit…", systemImage: "pencil") { editingCategory = category }
             Divider()
+            Button("Copy Share Link", systemImage: "link") { copyShareLink(for: category) }
+            Button("Export…", systemImage: "square.and.arrow.up") { exportCategory(category) }
+            Divider()
             Button("Delete", systemImage: "trash", role: .destructive) {
                 deleteCategory(category)
             }
@@ -476,6 +479,37 @@ struct ContentView: View {
         alert.messageText = title
         alert.informativeText = message
         alert.runModal()
+    }
+
+    /// Copy a self-contained `ditto://import` link for this category and its
+    /// snippets to the clipboard — paste it anywhere (email, intranet) to share.
+    private func copyShareLink(for category: Category) {
+        guard let link = dittoImportLink(snippets: category.snippets, categories: [category]) else {
+            showAlert("Couldn't create link", message: "This category couldn't be encoded.")
+            return
+        }
+        Clipboard.copy(link.absoluteString)
+    }
+
+    /// Export a single category (with its snippets) to a JSON file.
+    private func exportCategory(_ category: Category) {
+        let data: Data
+        do {
+            data = try exportDitto(snippets: category.snippets, categories: [category])
+        } catch {
+            showAlert("Export failed", message: error.localizedDescription)
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "Ditto - \(category.name)"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            showAlert("Could not write file", message: error.localizedDescription)
+        }
     }
 
     private func runImport() {

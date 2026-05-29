@@ -83,6 +83,18 @@ func exportDitto(snippets: [Snippet], categories: [Category]) throws -> Data {
     return try isoEncoder.encode(bundle)
 }
 
+/// Build a self-contained `ditto://import` link for the given content. The
+/// bundle JSON is URL-safe base64-encoded (RFC 4648 §5) so it survives being
+/// pasted into a URL — pairs with `SnippetURL.decodeBase64URL`.
+func dittoImportLink(snippets: [Snippet], categories: [Category]) -> URL? {
+    guard let data = try? exportDitto(snippets: snippets, categories: categories) else { return nil }
+    let encoded = data.base64EncodedString()
+        .replacingOccurrences(of: "+", with: "-")
+        .replacingOccurrences(of: "/", with: "_")
+        .replacingOccurrences(of: "=", with: "")
+    return URL(string: "ditto://import?data=\(encoded)")
+}
+
 func importDitto(data: Data, into context: ModelContext) throws {
     let bundle = try isoDecoder.decode(DittoExport.self, from: data)
 
