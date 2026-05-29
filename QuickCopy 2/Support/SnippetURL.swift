@@ -2,46 +2,58 @@
 //  SnippetURL.swift
 //  QuickCopy 2 (Ditto)
 //
-//  Handles incoming `ditto://` links that carry a full snippet inline, so a
-//  snippet can be added just by opening a URL — e.g. a shareable link on a
-//  company intranet.
+//  Handles incoming `ditto://` links so snippets can be added just by opening
+//  a URL — e.g. a shareable link on a company intranet.
 //
-//  Format:
-//      ditto://add?content=<text>&title=<name>&category=<name>&color=<color>&icon=<sf-symbol>
+//  Two forms:
 //
-//  Only `content` is required. If `category` names a category that doesn't
-//  exist yet, it's created (using `color` / `icon` if provided).
+//  1. A single snippet (human-friendly):
+//       ditto://add?content=<text>&title=<name>&category=<name>
+//     Only `content` is required. If `category` names one that doesn't exist
+//     yet, it's created with default color/icon.
+//
+//  2. A bundle of snippets and/or whole categories (Claude-friendly):
+//       ditto://import?data=<base64url JSON>
+//     The JSON is the exact format File → Export produces (DittoExport), so a
+//     bundle can carry many snippets plus full categories (name, color, icon).
 //
 
 import Foundation
 import SwiftData
 
 enum SnippetURL {
-    /// Parse a `ditto://add` URL and insert the snippet it describes.
-    /// Returns the created snippet on success, or nil if the URL was invalid.
+    /// Route a `ditto://` URL to the right handler. Returns true if it acted.
     @discardableResult
     @MainActor
-    static func handle(_ url: URL, context: ModelContext) -> Snippet? {
-        guard url.scheme == "ditto", url.host == "add",
-              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let items = components.queryItems else { return nil }
+    static func handle(_ url: URL, context: ModelContext) -> Bool {
+        guard url.scheme == "ditto" else { return false }
+        switch url.host {
+        case "add":    return handleAdd(url, context: context)
+        case "import": return handleImport(url, context: context)
+        default:       return false
+        }
+    }
+
+    // MARK: - ditto://add
+
+    @MainActor
+    private static func handleAdd(_ url: URL, context: ModelContext) -> Bool {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let items = components.queryItems else { return false }
 
         func value(_ name: String) -> String? {
             items.first { $0.name == name }?.value
         }
 
         guard let content = value("content")?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !content.isEmpty else { return nil }
+              !content.isEmpty else { return false }
 
         let title = value("title") ?? ""
 
         var category: Category?
         if let name = value("category")?.trimmingCharacters(in: .whitespacesAndNewlines),
            !name.isEmpty {
-            category = resolveCategory(named: name,
-                                       color: value("color"),
-                                       icon: value("icon"),
-                                       context: context)
+            category = resolveCategory(named: name, context: context)
         }
 
         let nextIndex = ((try? context.fetch(FetchDescriptor<Snippet>())) ?? [])
@@ -50,24 +62,49 @@ enum SnippetURL {
                               sortIndex: nextIndex + 1, category: category)
         context.insert(snippet)
         try? context.save()
-        return snippet
+        return true
     }
 
-    /// Find an existing category by name (case-insensitive), or create one.
+    /// Find an existing category by name (case-insensitive), or create a
+    /// default one. Color/icon aren't per-snippet concerns, so a category
+    /// created via `add` just uses sensible defaults.
     @MainActor
-    private static func resolveCategory(named name: String, color: String?, icon: String?,
-                                        context: ModelContext) -> Category {
+    private static func resolveCategory(named name: String, context: ModelContext) -> Category {
         let existing = (try? context.fetch(FetchDescriptor<Category>())) ?? []
         if let match = existing.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
             return match
         }
         let nextIndex = existing.map(\.sortIndex).max() ?? -1
-        let resolvedColor = SnippetColor(rawValue: color ?? "") != nil ? color! : "blue"
-        let category = Category(name: name,
-                                symbolName: icon ?? "tag.fill",
-                                colorName: resolvedColor,
-                                sortIndex: nextIndex + 1)
+        let category = Category(name: name, symbolName: "tag.fill",
+                                colorName: "blue", sortIndex: nextIndex + 1)
         context.insert(category)
         return category
+    }
+
+    // MARK: - ditto://import
+
+    @MainActor
+    private static func handleImport(_ url: URL, context: ModelContext) -> Bool {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let encoded = components.queryItems?.first(where: { $0.name == "data" })?.value,
+              let data = decodeBase64URL(encoded) else { return false }
+        do {
+            try importDitto(data: data, into: context)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Decode URL-safe base64 (RFC 4648 §5): `-`/`_` for `+`/`/`, padding optional.
+    private static func decodeBase64URL(_ string: String) -> Data? {
+        var s = string
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let remainder = s.count % 4
+        if remainder > 0 {
+            s += String(repeating: "=", count: 4 - remainder)
+        }
+        return Data(base64Encoded: s)
     }
 }
