@@ -13,6 +13,9 @@ import UniformTypeIdentifiers
 struct SnippetCard: View {
     @Environment(\.modelContext) private var modelContext
     let snippet: Snippet
+    /// Grid density (1 = largest cards … 4 = smallest). The two smallest sizes
+    /// use a more compact card so the blocks aren't needlessly tall.
+    var columnCount: Int = 1
     @Binding var draggedSnippet: Snippet?
     var onEdit: () -> Void
     var onReorder: (_ dragged: Snippet, _ target: Snippet) -> Void
@@ -25,14 +28,34 @@ struct SnippetCard: View {
         SnippetColor.color(for: snippet.category?.colorName ?? "blue")
     }
 
+    private var previewLineLimit: Int {
+        switch columnCount {
+        case 4:  return 1
+        case 3:  return 2
+        default: return 3
+        }
+    }
+
+    private var cardMinHeight: CGFloat {
+        switch columnCount {
+        case 4:  return 76
+        case 3:  return 92
+        default: return 110
+        }
+    }
+
+    private var cardPadding: CGFloat {
+        columnCount >= 3 ? 11 : 14
+    }
+
     var body: some View {
         Button(action: copy) {
             ZStack(alignment: .topLeading) {
                 content
                 if didCopy { copiedOverlay }
             }
-            .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
-            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: cardMinHeight, alignment: .topLeading)
+            .padding(cardPadding)
             .background(cardBackground)
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -100,7 +123,7 @@ struct SnippetCard: View {
             Text(snippet.preview)
                 .font(.callout)
                 .foregroundStyle(.secondary)
-                .lineLimit(3)
+                .lineLimit(previewLineLimit)
                 .multilineTextAlignment(.leading)
 
             Spacer(minLength: 0)
@@ -180,20 +203,29 @@ struct SnippetCard: View {
 
 /// A dashed "+" tile shown at the end of a populated grid to add a snippet.
 struct AddSnippetCard: View {
+    var columnCount: Int = 1
     var action: () -> Void
     @State private var isHovering = false
 
+    private var cardMinHeight: CGFloat {
+        switch columnCount {
+        case 4:  return 76
+        case 3:  return 92
+        default: return 110
+        }
+    }
+
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: columnCount >= 4 ? 2 : 8) {
                 Image(systemName: "plus")
                     .font(.title2.weight(.semibold))
                 Text("New Snippet")
                     .font(.subheadline.weight(.medium))
             }
             .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, minHeight: 110)
-            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: cardMinHeight)
+            .padding(columnCount >= 3 ? 11 : 14)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color.secondary.opacity(isHovering ? 0.12 : 0.06))

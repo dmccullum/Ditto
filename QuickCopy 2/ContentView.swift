@@ -280,6 +280,7 @@ struct ContentView: View {
                 ForEach(gridSnippets) { snippet in
                     SnippetCard(
                         snippet: snippet,
+                        columnCount: columnCount,
                         draggedSnippet: $draggedSnippet,
                         onEdit: { editingSnippet = snippet },
                         onReorder: { reorderSnippetLocally($0, target: $1) },
@@ -289,7 +290,7 @@ struct ContentView: View {
 
                 // The add tile only appears in views you populate manually.
                 if isReorderable {
-                    AddSnippetCard { isCreatingSnippet = true }
+                    AddSnippetCard(columnCount: columnCount) { isCreatingSnippet = true }
                 }
             }
             .padding(20)
