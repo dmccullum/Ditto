@@ -35,8 +35,17 @@ struct ContentView: View {
     @State private var selection: SidebarSelection = .all
     @State private var searchText = ""
 
-    // Persisted grid density: 1 = large cards, 4 = compact cards.
-    @AppStorage("snippetColumns") private var columnCount: Int = 3
+    // Persisted card size: 0 = smallest … 4 = largest. The grid is adaptive,
+    // so the number of columns follows the window width while cards stay near
+    // the chosen size.
+    @AppStorage("snippetSizeLevel") private var sizeLevel: Int = 2
+    private static let minSizeLevel = 0
+    private static let maxSizeLevel = 4
+
+    /// Target minimum card width for each size level, fed to an adaptive grid.
+    private var cardMinWidth: CGFloat {
+        [150, 185, 225, 275, 330][min(max(sizeLevel, 0), 4)]
+    }
 
     // Sheet / panel state
     @State private var editingSnippet: Snippet?
@@ -96,14 +105,14 @@ struct ContentView: View {
         .onChange(of: appCommands.importLibrary) { _, imp in
             if imp { appCommands.importLibrary = false; DispatchQueue.main.async { runImport() } }
         }
-        .onChange(of: appCommands.increaseColumns) { _, v in
-            if v { columnCount = max(1, columnCount - 1); appCommands.increaseColumns = false }
+        .onChange(of: appCommands.zoomIn) { _, v in
+            if v { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1); appCommands.zoomIn = false }
         }
-        .onChange(of: appCommands.decreaseColumns) { _, v in
-            if v { columnCount = min(4, columnCount + 1); appCommands.decreaseColumns = false }
+        .onChange(of: appCommands.zoomOut) { _, v in
+            if v { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1); appCommands.zoomOut = false }
         }
-        .onChange(of: appCommands.resetColumns) { _, v in
-            if v { columnCount = 3; appCommands.resetColumns = false }
+        .onChange(of: appCommands.resetZoom) { _, v in
+            if v { sizeLevel = 2; appCommands.resetZoom = false }
         }
         .onChange(of: draggedSnippet) { _, dragged in
             // Snapshot the current order only when a drag begins. The rest of
@@ -248,16 +257,16 @@ struct ContentView: View {
             // Single item so SwiftUI renders them left-to-right in declaration order.
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 2) {
-                    Button { columnCount = min(4, columnCount + 1) } label: {
+                    Button { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) } label: {
                         Image(systemName: "minus.magnifyingglass")
                     }
-                    .disabled(columnCount >= 4)
+                    .disabled(sizeLevel <= Self.minSizeLevel)
                     .help("Zoom Out (⌘–)")
 
-                    Button { columnCount = max(1, columnCount - 1) } label: {
+                    Button { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1) } label: {
                         Image(systemName: "plus.magnifyingglass")
                     }
-                    .disabled(columnCount <= 1)
+                    .disabled(sizeLevel >= Self.maxSizeLevel)
                     .help("Zoom In (⌘+)")
 
                     Divider().frame(height: 16).padding(.horizontal, 4)
@@ -274,13 +283,13 @@ struct ContentView: View {
     private var snippetGrid: some View {
         ScrollView {
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(minimum: 160), spacing: 16), count: columnCount),
+                columns: [GridItem(.adaptive(minimum: cardMinWidth), spacing: 16)],
                 spacing: 16
             ) {
                 ForEach(gridSnippets) { snippet in
                     SnippetCard(
                         snippet: snippet,
-                        columnCount: columnCount,
+                        sizeLevel: sizeLevel,
                         draggedSnippet: $draggedSnippet,
                         onEdit: { editingSnippet = snippet },
                         onReorder: { reorderSnippetLocally($0, target: $1) },
@@ -290,7 +299,7 @@ struct ContentView: View {
 
                 // The add tile only appears in views you populate manually.
                 if isReorderable {
-                    AddSnippetCard(columnCount: columnCount) { isCreatingSnippet = true }
+                    AddSnippetCard(sizeLevel: sizeLevel) { isCreatingSnippet = true }
                 }
             }
             .padding(20)
