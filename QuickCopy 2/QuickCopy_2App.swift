@@ -58,7 +58,8 @@ struct QuickCopy_2App: App {
                 .environment(commands)
                 .environment(settings)
                 .onOpenURL { url in
-                    SnippetURL.handle(url, context: container.mainContext)
+                    SnippetURL.handle(url, context: container.mainContext,
+                                      keepCategories: settings.linkCategoryBehavior == .keep)
                     NSApp.activate(ignoringOtherApps: true)
                 }
         }

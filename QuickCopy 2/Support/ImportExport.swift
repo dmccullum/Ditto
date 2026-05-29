@@ -95,24 +95,27 @@ func dittoImportLink(snippets: [Snippet], categories: [Category]) -> URL? {
     return URL(string: "ditto://import?data=\(encoded)")
 }
 
-func importDitto(data: Data, into context: ModelContext) throws {
+func importDitto(data: Data, into context: ModelContext, keepCategories: Bool = true) throws {
     let bundle = try isoDecoder.decode(DittoExport.self, from: data)
 
     // Merge categories by name (case-insensitive): reuse an existing category
     // rather than creating a duplicate. Existing categories keep their own
     // color/icon so a re-import never clobbers the user's customizations.
-    let existingCategories = (try? context.fetch(FetchDescriptor<Category>())) ?? []
+    // When keepCategories is false, imported snippets become uncategorized.
     var categoryMap: [String: Category] = [:]
-    for cat in existingCategories {
-        categoryMap[cat.name.lowercased()] = cat
-    }
-    var maxCategoryIndex = existingCategories.map(\.sortIndex).max() ?? -1
-    for ec in bundle.categories where categoryMap[ec.name.lowercased()] == nil {
-        maxCategoryIndex += 1
-        let category = Category(name: ec.name, symbolName: ec.symbolName,
-                                colorName: ec.colorName, sortIndex: maxCategoryIndex)
-        context.insert(category)
-        categoryMap[ec.name.lowercased()] = category
+    if keepCategories {
+        let existingCategories = (try? context.fetch(FetchDescriptor<Category>())) ?? []
+        for cat in existingCategories {
+            categoryMap[cat.name.lowercased()] = cat
+        }
+        var maxCategoryIndex = existingCategories.map(\.sortIndex).max() ?? -1
+        for ec in bundle.categories where categoryMap[ec.name.lowercased()] == nil {
+            maxCategoryIndex += 1
+            let category = Category(name: ec.name, symbolName: ec.symbolName,
+                                    colorName: ec.colorName, sortIndex: maxCategoryIndex)
+            context.insert(category)
+            categoryMap[ec.name.lowercased()] = category
+        }
     }
 
     // Skip snippets that already exist (same content + title + category), so

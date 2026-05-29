@@ -8,6 +8,21 @@
 import SwiftUI
 import ServiceManagement
 
+/// What to do with a shared link's category when importing it.
+enum LinkCategoryBehavior: String, CaseIterable, Identifiable {
+    case keep
+    case uncategorized
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .keep:          return "Keep their category"
+        case .uncategorized: return "Import as uncategorized"
+        }
+    }
+}
+
 /// How the All Snippets view groups its cards.
 enum SnippetGrouping: String, CaseIterable, Identifiable {
     case none
@@ -38,10 +53,17 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(grouping.rawValue, forKey: "snippetGrouping") }
     }
 
+    /// What to do with a category carried by an imported ditto:// link.
+    var linkCategoryBehavior: LinkCategoryBehavior {
+        didSet { UserDefaults.standard.set(linkCategoryBehavior.rawValue, forKey: "linkCategoryBehavior") }
+    }
+
     init() {
         collapsedSections = Set(UserDefaults.standard.stringArray(forKey: "collapsedSections") ?? [])
         grouping = UserDefaults.standard.string(forKey: "snippetGrouping")
             .flatMap(SnippetGrouping.init) ?? .none
+        linkCategoryBehavior = UserDefaults.standard.string(forKey: "linkCategoryBehavior")
+            .flatMap(LinkCategoryBehavior.init) ?? .keep
     }
 }
 

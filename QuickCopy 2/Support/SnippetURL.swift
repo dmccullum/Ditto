@@ -23,13 +23,15 @@ import SwiftData
 
 enum SnippetURL {
     /// Route a `ditto://` URL to the right handler. Returns true if it acted.
+    /// `keepCategories` reflects the user's import preference: when false, a
+    /// link's category is ignored and snippets land uncategorized.
     @discardableResult
     @MainActor
-    static func handle(_ url: URL, context: ModelContext) -> Bool {
+    static func handle(_ url: URL, context: ModelContext, keepCategories: Bool = true) -> Bool {
         guard url.scheme == "ditto" else { return false }
         switch url.host {
-        case "add":    return handleAdd(url, context: context)
-        case "import": return handleImport(url, context: context)
+        case "add":    return handleAdd(url, context: context, keepCategories: keepCategories)
+        case "import": return handleImport(url, context: context, keepCategories: keepCategories)
         default:       return false
         }
     }
@@ -37,7 +39,7 @@ enum SnippetURL {
     // MARK: - ditto://add
 
     @MainActor
-    private static func handleAdd(_ url: URL, context: ModelContext) -> Bool {
+    private static func handleAdd(_ url: URL, context: ModelContext, keepCategories: Bool) -> Bool {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let items = components.queryItems else { return false }
 
@@ -51,7 +53,8 @@ enum SnippetURL {
         let title = value("title") ?? ""
 
         var category: Category?
-        if let name = value("category")?.trimmingCharacters(in: .whitespacesAndNewlines),
+        if keepCategories,
+           let name = value("category")?.trimmingCharacters(in: .whitespacesAndNewlines),
            !name.isEmpty {
             category = resolveCategory(named: name, context: context)
         }
@@ -84,12 +87,12 @@ enum SnippetURL {
     // MARK: - ditto://import
 
     @MainActor
-    private static func handleImport(_ url: URL, context: ModelContext) -> Bool {
+    private static func handleImport(_ url: URL, context: ModelContext, keepCategories: Bool) -> Bool {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let encoded = components.queryItems?.first(where: { $0.name == "data" })?.value,
               let data = decodeBase64URL(encoded) else { return false }
         do {
-            try importDitto(data: data, into: context)
+            try importDitto(data: data, into: context, keepCategories: keepCategories)
             return true
         } catch {
             return false
