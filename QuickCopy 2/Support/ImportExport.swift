@@ -98,18 +98,43 @@ func dittoImportLink(snippets: [Snippet], categories: [Category]) -> URL? {
 func importDitto(data: Data, into context: ModelContext) throws {
     let bundle = try isoDecoder.decode(DittoExport.self, from: data)
 
+    // Merge categories by name (case-insensitive): reuse an existing category
+    // rather than creating a duplicate. Existing categories keep their own
+    // color/icon so a re-import never clobbers the user's customizations.
+    let existingCategories = (try? context.fetch(FetchDescriptor<Category>())) ?? []
     var categoryMap: [String: Category] = [:]
-    for ec in bundle.categories {
+    for cat in existingCategories {
+        categoryMap[cat.name.lowercased()] = cat
+    }
+    var maxCategoryIndex = existingCategories.map(\.sortIndex).max() ?? -1
+    for ec in bundle.categories where categoryMap[ec.name.lowercased()] == nil {
+        maxCategoryIndex += 1
         let category = Category(name: ec.name, symbolName: ec.symbolName,
-                                colorName: ec.colorName, sortIndex: ec.sortIndex)
+                                colorName: ec.colorName, sortIndex: maxCategoryIndex)
         context.insert(category)
-        categoryMap[ec.name] = category
+        categoryMap[ec.name.lowercased()] = category
     }
 
+    // Skip snippets that already exist (same content + title + category), so
+    // re-importing the same bundle is idempotent. New items are appended after
+    // the current highest sortIndex.
+    let existingSnippets = (try? context.fetch(FetchDescriptor<Snippet>())) ?? []
+    func dedupKey(content: String, title: String, categoryName: String?) -> String {
+        "\(categoryName?.lowercased() ?? "")\u{1}\(title)\u{1}\(content)"
+    }
+    var seen = Set(existingSnippets.map {
+        dedupKey(content: $0.content, title: $0.title, categoryName: $0.category?.name)
+    })
+    var maxSnippetIndex = existingSnippets.map(\.sortIndex).max() ?? -1
     for es in bundle.snippets {
+        let category = es.categoryName.flatMap { categoryMap[$0.lowercased()] }
+        let key = dedupKey(content: es.content, title: es.title, categoryName: category?.name)
+        guard !seen.contains(key) else { continue }
+        seen.insert(key)
+        maxSnippetIndex += 1
         let snippet = Snippet(title: es.title, content: es.content,
-                              sortIndex: es.sortIndex, isPinned: es.isPinned,
-                              category: es.categoryName.flatMap { categoryMap[$0] })
+                              sortIndex: maxSnippetIndex, isPinned: es.isPinned,
+                              category: category)
         context.insert(snippet)
     }
 
