@@ -115,13 +115,13 @@ struct DittoCommands: Commands {
             Button("Import Library…") { commands.importLibrary = true }
         }
 
-        // View menu: card size + grouping controls.
-        CommandMenu("View") {
+        // Card size + grouping controls, added to the system View menu (rather
+        // than a second "View" menu).
+        CommandGroup(after: .sidebar) {
             Button("Zoom In") { commands.zoomIn = true }
                 .keyboardShortcut("+", modifiers: .command)
             Button("Zoom Out") { commands.zoomOut = true }
                 .keyboardShortcut("-", modifiers: .command)
-            Divider()
             Button("Actual Size") { commands.resetZoom = true }
             Divider()
             Picker("Group By", selection: $settings.grouping) {
@@ -130,6 +130,7 @@ struct DittoCommands: Commands {
                 }
             }
             .pickerStyle(.inline)
+            Divider()
         }
 
         // A reliable way back to the window after closing it.
