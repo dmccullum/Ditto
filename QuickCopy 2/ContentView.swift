@@ -15,7 +15,6 @@ import AppKit
 enum SidebarSelection: Hashable {
     case all
     case frequent
-    case recent
     case category(Category)
 }
 
@@ -163,16 +162,6 @@ struct ContentView: View {
                 }
                 .padding(.vertical, 2)
                 .tag(SidebarSelection.frequent)
-
-                HStack(spacing: 6) {
-                    Image(systemName: "clock.fill")
-                        .foregroundStyle(.tint)
-                        .frame(width: 18)
-                    Text("Recent")
-                    Spacer()
-                }
-                .padding(.vertical, 2)
-                .tag(SidebarSelection.recent)
             }
 
             Section("Categories") {
@@ -485,9 +474,6 @@ struct ContentView: View {
             case .frequent:
                 ContentUnavailableView("Nothing Frequent Yet", systemImage: "flame",
                     description: Text("Snippets you copy often will show up here."))
-            case .recent:
-                ContentUnavailableView("Nothing Recent Yet", systemImage: "clock",
-                    description: Text("Snippets you've copied will appear here, newest first."))
             default:
                 ContentUnavailableView {
                     Label("No Snippets Yet", systemImage: "sparkles")
@@ -512,7 +498,6 @@ struct ContentView: View {
         switch selection {
         case .all: return "All Snippets"
         case .frequent: return "Frequently Used"
-        case .recent: return "Recently Copied"
         case .category(let category): return category.name
         }
     }
@@ -533,7 +518,7 @@ struct ContentView: View {
     private var isReorderable: Bool {
         switch selection {
         case .all, .category: return true
-        case .frequent, .recent: return false
+        case .frequent: return false
         }
     }
 
@@ -558,10 +543,6 @@ struct ContentView: View {
             snippets = allSnippets
                 .filter { $0.copyCount > 0 }
                 .sorted { $0.copyCount > $1.copyCount }
-        case .recent:
-            snippets = allSnippets
-                .filter { $0.lastCopiedAt != nil }
-                .sorted { ($0.lastCopiedAt ?? .distantPast) > ($1.lastCopiedAt ?? .distantPast) }
         }
 
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
