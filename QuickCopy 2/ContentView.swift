@@ -47,6 +47,11 @@ struct ContentView: View {
         [150, 185, 225, 275, 330][min(max(sizeLevel, 0), 4)]
     }
 
+    // In the All Snippets view, optionally group cards into collapsible
+    // per-category sections.
+    @AppStorage("groupByCategory") private var groupByCategory = false
+    @State private var collapsedGroups: Set<String> = []
+
     // Sheet / panel state
     @State private var editingSnippet: Snippet?
     @State private var isCreatingSnippet = false
@@ -247,6 +252,8 @@ struct ContentView: View {
         Group {
             if filteredSnippets.isEmpty {
                 emptyState
+            } else if isGrouped {
+                groupedSnippetView
             } else {
                 snippetGrid
             }
@@ -257,6 +264,16 @@ struct ContentView: View {
             // Single item so SwiftUI renders them left-to-right in declaration order.
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 2) {
+                    if isAllView {
+                        Button { groupByCategory.toggle() } label: {
+                            Image(systemName: groupByCategory
+                                  ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2")
+                        }
+                        .help(groupByCategory ? "Ungroup" : "Group by Category")
+
+                        Divider().frame(height: 16).padding(.horizontal, 4)
+                    }
+
                     Button { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) } label: {
                         Image(systemName: "minus.magnifyingglass")
                     }
@@ -306,6 +323,99 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Grouped view
+
+    /// One collapsible section's worth of snippets in the grouped layout.
+    private struct SnippetGroup: Identifiable {
+        let id: String
+        let title: String
+        let symbol: String
+        let colorName: String
+        let snippets: [Snippet]
+    }
+
+    /// Group the (already filtered) snippets by category, categories in their
+    /// sidebar order, with any uncategorized snippets last.
+    private var snippetGroups: [SnippetGroup] {
+        let snippets = filteredSnippets
+        var groups: [SnippetGroup] = []
+        for category in categories {
+            let items = snippets.filter {
+                $0.category?.persistentModelID == category.persistentModelID
+            }
+            guard !items.isEmpty else { continue }
+            groups.append(SnippetGroup(id: "cat:\(category.name)", title: category.name,
+                                       symbol: category.symbolName,
+                                       colorName: category.colorName, snippets: items))
+        }
+        let uncategorized = snippets.filter { $0.category == nil }
+        if !uncategorized.isEmpty {
+            groups.append(SnippetGroup(id: "uncategorized", title: "Uncategorized",
+                                       symbol: "tray", colorName: "blue",
+                                       snippets: uncategorized))
+        }
+        return groups
+    }
+
+    private var groupedSnippetView: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 20) {
+                ForEach(snippetGroups) { group in
+                    let collapsed = collapsedGroups.contains(group.id)
+                    VStack(alignment: .leading, spacing: 12) {
+                        groupHeader(group, collapsed: collapsed)
+                        if !collapsed {
+                            LazyVGrid(
+                                columns: [GridItem(.adaptive(minimum: cardMinWidth), spacing: 16)],
+                                spacing: 16
+                            ) {
+                                ForEach(group.snippets) { snippet in
+                                    SnippetCard(
+                                        snippet: snippet,
+                                        sizeLevel: sizeLevel,
+                                        draggedSnippet: $draggedSnippet,
+                                        onEdit: { editingSnippet = snippet },
+                                        onReorder: { reorderSnippetLocally($0, target: $1) },
+                                        onCommit: commitSnippetOrder
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    private func groupHeader(_ group: SnippetGroup, collapsed: Bool) -> some View {
+        let accent = SnippetColor.color(for: group.colorName)
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                if collapsed { collapsedGroups.remove(group.id) }
+                else { collapsedGroups.insert(group.id) }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(collapsed ? 0 : 90))
+                Image(systemName: group.symbol)
+                    .foregroundStyle(accent)
+                Text(group.title)
+                    .font(.headline)
+                Text("\(group.snippets.count)")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Spacer()
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private var emptyState: some View {
         if !searchText.isEmpty {
@@ -346,6 +456,14 @@ struct ContentView: View {
         case .category(let category): return category.name
         }
     }
+
+    private var isAllView: Bool {
+        if case .all = selection { return true }
+        return false
+    }
+
+    /// Grouped layout applies only to the All Snippets view, when enabled.
+    private var isGrouped: Bool { groupByCategory && isAllView }
 
     /// Reordering only makes sense in the manually-ordered views.
     private var isReorderable: Bool {
