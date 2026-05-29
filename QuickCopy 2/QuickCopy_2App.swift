@@ -118,11 +118,11 @@ struct DittoCommands: Commands {
         // Card size + grouping controls, added to the system View menu (rather
         // than a second "View" menu).
         CommandGroup(after: .sidebar) {
+            Button("Default Size") { commands.resetZoom = true }
             Button("Zoom In") { commands.zoomIn = true }
                 .keyboardShortcut("+", modifiers: .command)
             Button("Zoom Out") { commands.zoomOut = true }
                 .keyboardShortcut("-", modifiers: .command)
-            Button("Default Size") { commands.resetZoom = true }
             Divider()
             Picker("Group By", selection: $settings.grouping) {
                 ForEach(SnippetGrouping.allCases) { option in
