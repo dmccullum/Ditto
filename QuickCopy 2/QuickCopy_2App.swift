@@ -59,6 +59,10 @@ struct QuickCopy_2App: App {
             ContentView()
                 .environment(commands)
                 .environment(settings)
+                .onOpenURL { url in
+                    SnippetURL.handle(url, context: container.mainContext)
+                    NSApp.activate(ignoringOtherApps: true)
+                }
         }
         .modelContainer(container)
         .commands {
