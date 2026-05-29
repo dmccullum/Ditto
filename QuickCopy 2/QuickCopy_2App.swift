@@ -81,6 +81,12 @@ struct QuickCopy_2App: App {
             SettingsView()
                 .environment(settings)
         }
+
+        // In-app user guide (Help → Ditto Help). A single-instance window.
+        Window("Ditto Help", id: "help") {
+            HelpView()
+        }
+        .windowResizability(.contentSize)
     }
 }
 
@@ -138,6 +144,15 @@ struct DittoCommands: Commands {
         CommandGroup(after: .windowList) {
             Button("Ditto Window") { showMainWindow() }
                 .keyboardShortcut("0", modifiers: .command)
+        }
+
+        // Replace the default Help item with our in-app guide.
+        CommandGroup(replacing: .help) {
+            Button("Ditto Help") {
+                openWindow(id: "help")
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            .keyboardShortcut("?", modifiers: .command)
         }
     }
 
