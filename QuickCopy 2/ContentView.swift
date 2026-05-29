@@ -210,6 +210,7 @@ struct ContentView: View {
         )
         .contextMenu {
             Button("Edit…", systemImage: "pencil") { editingCategory = category }
+            Button("Duplicate", systemImage: "plus.square.on.square") { duplicateCategory(category) }
             Divider()
             Button("Copy Share Link", systemImage: "link") { copyShareLink(for: category) }
             Button("Export…", systemImage: "square.and.arrow.up") { exportCategory(category) }
@@ -394,6 +395,29 @@ struct ContentView: View {
         }
         modelContext.delete(category)
         try? modelContext.save()
+    }
+
+    /// Duplicate a category and its snippets, then open the editor so the new
+    /// copy can be renamed right away.
+    private func duplicateCategory(_ category: Category) {
+        let nextCategoryIndex = (categories.map(\.sortIndex).max() ?? -1) + 1
+        let copy = Category(name: "\(category.name) copy",
+                            symbolName: category.symbolName,
+                            colorName: category.colorName,
+                            sortIndex: nextCategoryIndex)
+        modelContext.insert(copy)
+
+        var nextSnippetIndex = (allSnippets.map(\.sortIndex).max() ?? -1) + 1
+        for snippet in category.snippets.sorted(by: { $0.sortIndex < $1.sortIndex }) {
+            let snippetCopy = Snippet(title: snippet.title, content: snippet.content,
+                                      sortIndex: nextSnippetIndex, isPinned: snippet.isPinned,
+                                      category: copy)
+            modelContext.insert(snippetCopy)
+            nextSnippetIndex += 1
+        }
+
+        try? modelContext.save()
+        editingCategory = copy
     }
 
     /// Live reorder during a drag — mutates only the local copy so the grid
