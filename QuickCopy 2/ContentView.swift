@@ -290,6 +290,7 @@ struct ContentView: View {
                     }
                     .help("New Snippet (⌘N)")
                 }
+                .controlSize(.small)
             }
         }
     }
