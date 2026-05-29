@@ -135,6 +135,7 @@ func importDitto(data: Data, into context: ModelContext) throws {
         let snippet = Snippet(title: es.title, content: es.content,
                               sortIndex: maxSnippetIndex, isPinned: es.isPinned,
                               category: category)
+        snippet.createdAt = es.createdAt   // preserve original date (the init defaults to now)
         context.insert(snippet)
     }
 

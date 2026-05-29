@@ -29,6 +29,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.undoManager) private var undoManager
     @Environment(AppCommands.self) private var appCommands
+    @Environment(AppSettings.self) private var settings
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
 
@@ -47,9 +48,8 @@ struct ContentView: View {
         [150, 185, 225, 275, 330][min(max(sizeLevel, 0), 4)]
     }
 
-    // In the All Snippets view, optionally group cards into collapsible
-    // per-category sections.
-    @AppStorage("groupByCategory") private var groupByCategory = false
+    // In the All Snippets view, snippets can be grouped into collapsible
+    // sections (by category or date added). The mode lives in AppSettings.
     @State private var collapsedGroups: Set<String> = []
 
     // Sheet / panel state
@@ -265,11 +265,19 @@ struct ContentView: View {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 2) {
                     if isAllView {
-                        Button { groupByCategory.toggle() } label: {
-                            Image(systemName: groupByCategory
-                                  ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2")
+                        Menu {
+                            Picker("Group By", selection: groupingBinding) {
+                                ForEach(SnippetGrouping.allCases) { option in
+                                    Text(option.label).tag(option)
+                                }
+                            }
+                            .pickerStyle(.inline)
+                        } label: {
+                            Image(systemName: settings.grouping == .none
+                                  ? "rectangle.grid.1x2" : "rectangle.grid.1x2.fill")
                         }
-                        .help(groupByCategory ? "Ungroup" : "Group by Category")
+                        .menuIndicator(.hidden)
+                        .help("Group By")
 
                         Divider().frame(height: 16).padding(.horizontal, 4)
                     }
@@ -330,13 +338,20 @@ struct ContentView: View {
         let id: String
         let title: String
         let symbol: String
-        let colorName: String
+        let accent: Color
         let snippets: [Snippet]
     }
 
-    /// Group the (already filtered) snippets by category, categories in their
-    /// sidebar order, with any uncategorized snippets last.
     private var snippetGroups: [SnippetGroup] {
+        switch settings.grouping {
+        case .category:  return categoryGroups
+        case .dateAdded: return dateGroups
+        case .none:      return []
+        }
+    }
+
+    /// Group by category, in sidebar order, with uncategorized snippets last.
+    private var categoryGroups: [SnippetGroup] {
         let snippets = filteredSnippets
         var groups: [SnippetGroup] = []
         for category in categories {
@@ -346,15 +361,60 @@ struct ContentView: View {
             guard !items.isEmpty else { continue }
             groups.append(SnippetGroup(id: "cat:\(category.name)", title: category.name,
                                        symbol: category.symbolName,
-                                       colorName: category.colorName, snippets: items))
+                                       accent: SnippetColor.color(for: category.colorName),
+                                       snippets: items))
         }
         let uncategorized = snippets.filter { $0.category == nil }
         if !uncategorized.isEmpty {
             groups.append(SnippetGroup(id: "uncategorized", title: "Uncategorized",
-                                       symbol: "tray", colorName: "blue",
+                                       symbol: "tray", accent: .secondary,
                                        snippets: uncategorized))
         }
         return groups
+    }
+
+    /// Group by date added, Finder-Recents style: Today, Yesterday, Previous 7
+    /// Days, Previous 30 Days, then by month for the current year, then by year.
+    private var dateGroups: [SnippetGroup] {
+        let cal = Calendar.current
+        let now = Date.now
+        let startOfToday = cal.startOfDay(for: now)
+        let startOfYesterday = cal.date(byAdding: .day, value: -1, to: startOfToday)!
+        let sevenDaysAgo = cal.date(byAdding: .day, value: -7, to: startOfToday)!
+        let thirtyDaysAgo = cal.date(byAdding: .day, value: -30, to: startOfToday)!
+        let startOfYear = cal.dateInterval(of: .year, for: now)?.start ?? startOfToday
+
+        // Each bucket: a sort key (newest first) plus a stable id/title.
+        func bucket(for date: Date) -> (sort: Date, id: String, title: String) {
+            if date >= startOfToday      { return (startOfToday, "today", "Today") }
+            if date >= startOfYesterday  { return (startOfYesterday, "yesterday", "Yesterday") }
+            if date >= sevenDaysAgo      { return (sevenDaysAgo, "7d", "Previous 7 Days") }
+            if date >= thirtyDaysAgo     { return (thirtyDaysAgo, "30d", "Previous 30 Days") }
+            if date >= startOfYear {
+                let comps = cal.dateComponents([.year, .month], from: date)
+                let monthStart = cal.date(from: comps) ?? date
+                return (monthStart, "m\(comps.year!)-\(comps.month!)",
+                        monthStart.formatted(.dateTime.month(.wide)))
+            }
+            let year = cal.component(.year, from: date)
+            let yearStart = cal.date(from: DateComponents(year: year)) ?? date
+            return (yearStart, "y\(year)", "\(year)")
+        }
+
+        // Partition snippets into buckets, remembering each bucket's sort key.
+        var byID: [String: (sort: Date, title: String, items: [Snippet])] = [:]
+        for snippet in filteredSnippets {
+            let b = bucket(for: snippet.createdAt)
+            byID[b.id, default: (b.sort, b.title, [])].items.append(snippet)
+        }
+
+        return byID
+            .sorted { $0.value.sort > $1.value.sort }
+            .map { id, value in
+                SnippetGroup(id: id, title: value.title, symbol: "calendar",
+                             accent: .secondary,
+                             snippets: value.items.sorted { $0.createdAt > $1.createdAt })
+            }
     }
 
     private var groupedSnippetView: some View {
@@ -389,7 +449,7 @@ struct ContentView: View {
     }
 
     private func groupHeader(_ group: SnippetGroup, collapsed: Bool) -> some View {
-        let accent = SnippetColor.color(for: group.colorName)
+        let accent = group.accent
         return Button {
             withAnimation(.easeInOut(duration: 0.2)) {
                 if collapsed { collapsedGroups.remove(group.id) }
@@ -463,7 +523,11 @@ struct ContentView: View {
     }
 
     /// Grouped layout applies only to the All Snippets view, when enabled.
-    private var isGrouped: Bool { groupByCategory && isAllView }
+    private var isGrouped: Bool { settings.grouping != .none && isAllView }
+
+    private var groupingBinding: Binding<SnippetGrouping> {
+        Binding(get: { settings.grouping }, set: { settings.grouping = $0 })
+    }
 
     /// Reordering only makes sense in the manually-ordered views.
     private var isReorderable: Bool {

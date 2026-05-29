@@ -66,7 +66,7 @@ struct QuickCopy_2App: App {
         }
         .modelContainer(container)
         .commands {
-            DittoCommands(commands: commands)
+            DittoCommands(commands: commands, settings: settings)
         }
 
         // The always-available menu bar dropdown for quick copying.
@@ -90,6 +90,7 @@ struct QuickCopy_2App: App {
 struct DittoCommands: Commands {
     @Environment(\.openWindow) private var openWindow
     var commands: AppCommands
+    @Bindable var settings: AppSettings
 
     var body: some Commands {
         // Replace the default "New Window" (⌘N) with our own create actions.
@@ -116,7 +117,7 @@ struct DittoCommands: Commands {
             Button("Import Library…") { commands.importLibrary = true }
         }
 
-        // View menu: card size controls.
+        // View menu: card size + grouping controls.
         CommandMenu("View") {
             Button("Zoom In") { commands.zoomIn = true }
                 .keyboardShortcut("+", modifiers: .command)
@@ -124,6 +125,13 @@ struct DittoCommands: Commands {
                 .keyboardShortcut("-", modifiers: .command)
             Divider()
             Button("Actual Size") { commands.resetZoom = true }
+            Divider()
+            Picker("Group By", selection: $settings.grouping) {
+                ForEach(SnippetGrouping.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+            .pickerStyle(.inline)
         }
 
         // A reliable way back to the window after closing it.

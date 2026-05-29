@@ -8,6 +8,23 @@
 import SwiftUI
 import ServiceManagement
 
+/// How the All Snippets view groups its cards.
+enum SnippetGrouping: String, CaseIterable, Identifiable {
+    case none
+    case category
+    case dateAdded
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .none:      return "None"
+        case .category:  return "Category"
+        case .dateAdded: return "Date Added"
+        }
+    }
+}
+
 /// Observable, UserDefaults-backed preferences shared across every scene.
 @Observable
 final class AppSettings {
@@ -16,8 +33,15 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(Array(collapsedSections), forKey: "collapsedSections") }
     }
 
+    /// How the All Snippets view groups its cards.
+    var grouping: SnippetGrouping {
+        didSet { UserDefaults.standard.set(grouping.rawValue, forKey: "snippetGrouping") }
+    }
+
     init() {
         collapsedSections = Set(UserDefaults.standard.stringArray(forKey: "collapsedSections") ?? [])
+        grouping = UserDefaults.standard.string(forKey: "snippetGrouping")
+            .flatMap(SnippetGrouping.init) ?? .none
     }
 }
 
