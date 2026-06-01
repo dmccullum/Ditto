@@ -30,15 +30,39 @@
 		CEE2CDC62FC86C9300AF51F7 /* DittoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DittoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		CE2B1AAC2FCDC5AF00E59AAA /* Exceptions for "Ditto" folder in "Ditto" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				DittoApp,
+			);
+			target = CEE2CDAE2FC86C9100AF51F7 /* Ditto */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		CE2B1AAD2FCDC5AF00E59AAA /* Exceptions for "Ditto" folder in "Compile Sources" phase from "Ditto" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = CEE2CDAB2FC86C9100AF51F7 /* Sources */;
+			membershipExceptions = (
+				DittoApp,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AAAA00020000000000000002 /* Ditto iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Ditto iOS";
 			sourceTree = "<group>";
 		};
-		CEE2CDB12FC86C9100AF51F7 /* QuickCopy 2 */ = {
+		CEE2CDB12FC86C9100AF51F7 /* Ditto */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "QuickCopy 2";
+			exceptions = (
+				CE2B1AAC2FCDC5AF00E59AAA /* Exceptions for "Ditto" folder in "Ditto" target */,
+				CE2B1AAD2FCDC5AF00E59AAA /* Exceptions for "Ditto" folder in "Compile Sources" phase from "Ditto" target */,
+			);
+			path = Ditto;
 			sourceTree = "<group>";
 		};
 		CEE2CDBF2FC86C9300AF51F7 /* QuickCopy 2Tests */ = {
@@ -88,7 +112,7 @@
 		CEE2CDA62FC86C9100AF51F7 = {
 			isa = PBXGroup;
 			children = (
-				CEE2CDB12FC86C9100AF51F7 /* QuickCopy 2 */,
+				CEE2CDB12FC86C9100AF51F7 /* Ditto */,
 				AAAA00020000000000000002 /* Ditto iOS */,
 				CEE2CDBF2FC86C9300AF51F7 /* QuickCopy 2Tests */,
 				CEE2CDC92FC86C9300AF51F7 /* QuickCopy 2UITests */,
@@ -145,7 +169,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				CEE2CDB12FC86C9100AF51F7 /* QuickCopy 2 */,
+				CEE2CDB12FC86C9100AF51F7 /* Ditto */,
 			);
 			name = Ditto;
 			packageProductDependencies = (
@@ -507,7 +531,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Ditto;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "QuickCopy 2/Ditto.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Ditto/Ditto.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -515,7 +539,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "QuickCopy 2/Info.plist";
+				INFOPLIST_FILE = "Ditto/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -541,7 +565,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Ditto;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "QuickCopy 2/Ditto.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Ditto/Ditto.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -549,7 +573,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "QuickCopy 2/Info.plist";
+				INFOPLIST_FILE = "Ditto/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
