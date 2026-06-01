@@ -71,12 +71,53 @@ struct SnippetListView: View {
                                 }
                                 .tint(.indigo)
                             }
+                            .contextMenu {
+                                Button { copy(snippet) } label: {
+                                    Label("Copy", systemImage: "doc.on.doc")
+                                }
+                                Button { editingSnippet = snippet } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                Button { duplicate(snippet) } label: {
+                                    Label("Duplicate", systemImage: "plus.square.on.square")
+                                }
+                                Button {
+                                    snippet.isPinned.toggle()
+                                    try? modelContext.save()
+                                } label: {
+                                    Label(snippet.isPinned ? "Unpin" : "Pin",
+                                          systemImage: snippet.isPinned ? "pin.slash" : "pin")
+                                }
+                                if let url = snippet.urlValue {
+                                    Button { UIApplication.shared.open(url) } label: {
+                                        Label("Open Link", systemImage: "safari")
+                                    }
+                                }
+                                Divider()
+                                Button(role: .destructive) {
+                                    modelContext.delete(snippet)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                     }
                 }
                 .listStyle(.plain)
             }
         }
         .sheet(item: $editingSnippet) { SnippetEditorView(snippet: $0) }
+    }
+
+    private func duplicate(_ snippet: Snippet) {
+        let copy = Snippet(
+            title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
+            content: snippet.content,
+            sortIndex: snippet.sortIndex + 1,
+            isPinned: false,
+            category: snippet.category
+        )
+        modelContext.insert(copy)
+        try? modelContext.save()
     }
 
     private func copy(_ snippet: Snippet) {
