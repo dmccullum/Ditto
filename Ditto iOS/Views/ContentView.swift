@@ -9,6 +9,7 @@ enum SidebarSelection: Hashable {
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.undoManager) private var undoManager
+    @Environment(AppSettings.self) private var settings
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
 
@@ -35,6 +36,21 @@ struct ContentView: View {
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
             .navigationTitle(navigationTitle)
             .toolbar {
+                if isAllView {
+                    ToolbarItem(placement: .primaryAction) {
+                        Menu {
+                            Picker("Group By", selection: groupingBinding) {
+                                ForEach(SnippetGrouping.allCases) { option in
+                                    Text(option.label).tag(option)
+                                }
+                            }
+                        } label: {
+                            Image(systemName: settings.grouping == .none
+                                  ? "line.3.horizontal.decrease.circle"
+                                  : "line.3.horizontal.decrease.circle.fill")
+                        }
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button { isCreatingSnippet = true } label: {
                         Image(systemName: "plus")
@@ -58,6 +74,15 @@ struct ContentView: View {
     private var selectedCategory: Category? {
         if case .category(let cat) = selection { return cat }
         return nil
+    }
+
+    private var isAllView: Bool {
+        if case .all? = selection { return true }
+        return false
+    }
+
+    private var groupingBinding: Binding<SnippetGrouping> {
+        Binding(get: { settings.grouping }, set: { settings.grouping = $0 })
     }
 
     /// Duplicate a category and its snippets, then open the editor to rename.
