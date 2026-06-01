@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var isCreatingSnippet = false
     @State private var isCreatingCategory = false
     @State private var editingCategory: Category?
+    @State private var isShowingSettings = false
 
     private var pinnedSnippets: [Snippet] {
         allSnippets.filter { $0.isPinned }
@@ -124,6 +125,11 @@ struct ContentView: View {
                             Button { duplicateCategory(category) } label: {
                                 Label("Duplicate", systemImage: "plus.square.on.square")
                             }
+                            if let link = dittoImportLink(snippets: category.snippets, categories: [category]) {
+                                ShareLink(item: link) {
+                                    Label("Share Link", systemImage: "square.and.arrow.up")
+                                }
+                            }
                             Divider()
                             Button(role: .destructive) {
                                 modelContext.delete(category)
@@ -136,11 +142,17 @@ struct ContentView: View {
         }
         .navigationTitle("Ditto")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { isShowingSettings = true } label: {
+                    Image(systemName: "gearshape")
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button { isCreatingCategory = true } label: {
                     Image(systemName: "folder.badge.plus")
                 }
             }
         }
+        .sheet(isPresented: $isShowingSettings) { SettingsView() }
     }
 }

@@ -93,6 +93,11 @@ struct SnippetListView: View {
                                         Label("Open Link", systemImage: "safari")
                                     }
                                 }
+                                if let link = shareLink(for: snippet) {
+                                    ShareLink(item: link) {
+                                        Label("Share Link", systemImage: "square.and.arrow.up")
+                                    }
+                                }
                                 Divider()
                                 Button(role: .destructive) {
                                     modelContext.delete(snippet)
@@ -106,6 +111,12 @@ struct SnippetListView: View {
             }
         }
         .sheet(item: $editingSnippet) { SnippetEditorView(snippet: $0) }
+    }
+
+    /// A self-contained ditto://import link for this snippet (and its category).
+    private func shareLink(for snippet: Snippet) -> URL? {
+        let categories = snippet.category.map { [$0] } ?? []
+        return dittoImportLink(snippets: [snippet], categories: categories)
     }
 
     private func duplicate(_ snippet: Snippet) {
