@@ -25,6 +25,10 @@ struct DittoiOSApp: App {
             }
         }
         SampleData.seedIfNeeded(container.mainContext)
+        // Give the context its own undo manager. SwiftData then registers undo
+        // operations and surfaces it to SwiftUI's environment, which enables the
+        // system shake-to-undo and three-finger-swipe gestures on iOS.
+        container.mainContext.undoManager = UndoManager()
     }
 
     var body: some Scene {

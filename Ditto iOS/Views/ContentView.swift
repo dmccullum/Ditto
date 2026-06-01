@@ -8,7 +8,6 @@ enum SidebarSelection: Hashable {
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.undoManager) private var undoManager
     @Environment(AppSettings.self) private var settings
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
@@ -19,6 +18,7 @@ struct ContentView: View {
     @State private var isCreatingCategory = false
     @State private var editingCategory: Category?
     @State private var isShowingSettings = false
+    @State private var editMode: EditMode = .inactive
 
     private var pinnedSnippets: [Snippet] {
         allSnippets.filter { $0.isPinned }
@@ -33,6 +33,7 @@ struct ContentView: View {
                 searchText: searchText,
                 allSnippets: allSnippets
             )
+            .environment(\.editMode, $editMode)
             .searchable(text: $searchText)
             .navigationTitle(navigationTitle)
             .toolbar {
@@ -51,8 +52,15 @@ struct ContentView: View {
                         }
                     }
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    EditButton()
+                // Reordering only applies to a flat (ungrouped) list.
+                if !isGrouped {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button(editMode.isEditing ? "Done" : "Edit") {
+                            withAnimation {
+                                editMode = editMode.isEditing ? .inactive : .active
+                            }
+                        }
+                    }
                 }
                 DefaultToolbarItem(kind: .search, placement: .bottomBar)
                 ToolbarSpacer(.flexible, placement: .bottomBar)
@@ -62,9 +70,9 @@ struct ContentView: View {
                     }
                 }
             }
+            .onChange(of: selection) { _, _ in editMode = .inactive }
+            .onChange(of: settings.grouping) { _, _ in editMode = .inactive }
         }
-        .onAppear { modelContext.undoManager = undoManager }
-        .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }
         .sheet(isPresented: $isCreatingSnippet) {
             SnippetEditorView(defaultCategory: selectedCategory)
         }
@@ -84,6 +92,11 @@ struct ContentView: View {
     private var isAllView: Bool {
         if case .all? = selection { return true }
         return false
+    }
+
+    /// Snippets are grouped (and thus not reorderable) only in All Snippets.
+    private var isGrouped: Bool {
+        settings.grouping != .none && isAllView
     }
 
     private var groupingBinding: Binding<SnippetGrouping> {
