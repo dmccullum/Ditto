@@ -85,6 +85,8 @@ struct SnippetListView: View {
                 Section {
                     if !collapsedGroups.contains(group.id) {
                         ForEach(group.snippets) { snippet in rowView(snippet) }
+                            .onMove { source, dest in moveSnippets(in: group, from: source, to: dest) }
+                            .onDelete { offsets in deleteSnippets(in: group, at: offsets) }
                     }
                 } header: {
                     groupHeader(group)
@@ -92,6 +94,25 @@ struct SnippetListView: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    /// Reorder within a single group, reusing that group's existing sortIndex
+    /// slots so other groups are untouched.
+    private func moveSnippets(in group: SnippetGroup, from source: IndexSet, to destination: Int) {
+        var items = group.snippets
+        items.move(fromOffsets: source, toOffset: destination)
+        let slots = group.snippets.map(\.sortIndex).sorted()
+        for (i, snippet) in items.enumerated() where i < slots.count {
+            snippet.sortIndex = slots[i]
+        }
+        try? modelContext.save()
+    }
+
+    private func deleteSnippets(in group: SnippetGroup, at offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(group.snippets[index])
+        }
+        try? modelContext.save()
     }
 
     @ViewBuilder

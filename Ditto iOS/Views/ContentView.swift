@@ -52,8 +52,9 @@ struct ContentView: View {
                         }
                     }
                 }
-                // Reordering only applies to a flat (ungrouped) list.
-                if !isGrouped {
+                // Reordering applies everywhere except Date Added grouping,
+                // where the order is intrinsic.
+                if canReorder {
                     ToolbarItem(placement: .primaryAction) {
                         Button(editMode.isEditing ? "Done" : "Edit") {
                             withAnimation {
@@ -95,9 +96,10 @@ struct ContentView: View {
         return false
     }
 
-    /// Snippets are grouped (and thus not reorderable) only in All Snippets.
-    private var isGrouped: Bool {
-        settings.grouping != .none && isAllView
+    /// Reordering is meaningful everywhere except Date Added grouping, where
+    /// order follows the dates. (Category view and category grouping allow it.)
+    private var canReorder: Bool {
+        !(isAllView && settings.grouping == .dateAdded)
     }
 
     private var groupingBinding: Binding<SnippetGrouping> {
