@@ -82,6 +82,7 @@ struct ContentView: View {
         .sheet(item: $editingCategory) { category in
             CategoryEditorView(category: category)
         }
+        .background(ShakeUndoBridge(undoManager: modelContext.undoManager))
     }
 
     private var selectedCategory: Category? {
