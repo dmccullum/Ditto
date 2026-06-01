@@ -54,12 +54,13 @@ struct ContentView: View {
                 ToolbarItem(placement: .primaryAction) {
                     EditButton()
                 }
+                DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                ToolbarSpacer(.flexible, placement: .bottomBar)
                 ToolbarItem(placement: .bottomBar) {
                     Button { isCreatingSnippet = true } label: {
                         Label("New Snippet", systemImage: "square.and.pencil")
                     }
                 }
-                DefaultToolbarItem(kind: .search, placement: .bottomBar)
             }
         }
         .onAppear { modelContext.undoManager = undoManager }
