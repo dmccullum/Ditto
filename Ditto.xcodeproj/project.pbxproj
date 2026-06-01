@@ -505,7 +505,7 @@
 		CEE2CDD12FC86C9300AF51F7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Ditto;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "QuickCopy 2/Ditto.entitlements";
 				CODE_SIGN_STYLE = Automatic;
@@ -539,7 +539,7 @@
 		CEE2CDD22FC86C9300AF51F7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Ditto;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "QuickCopy 2/Ditto.entitlements";
 				CODE_SIGN_STYLE = Automatic;
