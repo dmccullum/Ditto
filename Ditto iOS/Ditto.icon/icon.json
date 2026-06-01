@@ -1,0 +1,67 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "srgb:0.00193,0.38298,1.00000,1.00000",
+      "srgb:0.29237,0.77215,0.77215,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 0
+      },
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0.7
+      }
+    }
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill" : {
+            "automatic-gradient" : "extended-gray:1.00000,1.00000"
+          },
+          "image-name" : "Ditto-01 3.svg",
+          "name" : "Ditto-01 3",
+          "position-specializations" : [
+            {
+              "idiom" : "square",
+              "value" : {
+                "scale" : 0.95,
+                "translation-in-points" : [
+                  25,
+                  10
+                ]
+              }
+            },
+            {
+              "idiom" : "watchOS",
+              "value" : {
+                "scale" : 0.9,
+                "translation-in-points" : [
+                  25,
+                  10
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
