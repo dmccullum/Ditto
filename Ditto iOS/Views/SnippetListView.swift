@@ -55,6 +55,7 @@ struct SnippetListView: View {
         List {
             ForEach(filtered) { snippet in rowView(snippet) }
                 .onMove(perform: moveSnippets)
+                .onDelete(perform: deleteSnippets)
         }
         .listStyle(.plain)
     }
@@ -65,6 +66,15 @@ struct SnippetListView: View {
         items.move(fromOffsets: source, toOffset: destination)
         for (index, snippet) in items.enumerated() {
             snippet.sortIndex = index
+        }
+        try? modelContext.save()
+    }
+
+    /// Delete from Edit mode only — the custom trailing swipe (Edit) overrides
+    /// the default swipe-to-delete, so this surfaces just the edit-mode control.
+    private func deleteSnippets(at offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(filtered[index])
         }
         try? modelContext.save()
     }
@@ -102,9 +112,6 @@ struct SnippetListView: View {
                 .tint(.orange)
             }
             .swipeActions(edge: .trailing) {
-                Button(role: .destructive) {
-                    modelContext.delete(snippet)
-                } label: { Label("Delete", systemImage: "trash") }
                 Button { editingSnippet = snippet } label: {
                     Label("Edit", systemImage: "pencil")
                 }
