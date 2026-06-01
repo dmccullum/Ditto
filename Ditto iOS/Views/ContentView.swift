@@ -59,6 +59,31 @@ struct ContentView: View {
         return nil
     }
 
+    /// Duplicate a category and its snippets, then open the editor to rename.
+    private func duplicateCategory(_ category: Category) {
+        let nextCategoryIndex = (categories.map(\.sortIndex).max() ?? -1) + 1
+        let copy = Category(name: "\(category.name) copy",
+                            symbolName: category.symbolName,
+                            colorName: category.colorName,
+                            sortIndex: nextCategoryIndex)
+        modelContext.insert(copy)
+
+        var nextSnippetIndex = (allSnippets.map(\.sortIndex).max() ?? -1) + 1
+        let members = allSnippets
+            .filter { $0.category?.persistentModelID == category.persistentModelID }
+            .sorted { $0.sortIndex < $1.sortIndex }
+        for snippet in members {
+            let snippetCopy = Snippet(title: snippet.title, content: snippet.content,
+                                      sortIndex: nextSnippetIndex, isPinned: snippet.isPinned,
+                                      category: copy)
+            modelContext.insert(snippetCopy)
+            nextSnippetIndex += 1
+        }
+
+        try? modelContext.save()
+        editingCategory = copy
+    }
+
     private var navigationTitle: String {
         switch selection ?? .all {
         case .all:    return "All Snippets"
@@ -91,6 +116,20 @@ struct ContentView: View {
                                 Label("Edit", systemImage: "pencil")
                             }
                             .tint(.blue)
+                        }
+                        .contextMenu {
+                            Button { editingCategory = category } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            Button { duplicateCategory(category) } label: {
+                                Label("Duplicate", systemImage: "plus.square.on.square")
+                            }
+                            Divider()
+                            Button(role: .destructive) {
+                                modelContext.delete(category)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                 }
             }
