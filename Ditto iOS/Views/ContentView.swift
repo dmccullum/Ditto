@@ -33,7 +33,7 @@ struct ContentView: View {
                 searchText: searchText,
                 allSnippets: allSnippets
             )
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
+            .searchable(text: $searchText)
             .navigationTitle(navigationTitle)
             .toolbar {
                 if isAllView {
@@ -52,10 +52,14 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
+                    EditButton()
+                }
+                ToolbarItem(placement: .bottomBar) {
                     Button { isCreatingSnippet = true } label: {
-                        Image(systemName: "plus")
+                        Label("New Snippet", systemImage: "square.and.pencil")
                     }
                 }
+                DefaultToolbarItem(kind: .search, placement: .bottomBar)
             }
         }
         .onAppear { modelContext.undoManager = undoManager }

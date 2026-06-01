@@ -54,8 +54,19 @@ struct SnippetListView: View {
     private var flatList: some View {
         List {
             ForEach(filtered) { snippet in rowView(snippet) }
+                .onMove(perform: moveSnippets)
         }
         .listStyle(.plain)
+    }
+
+    /// Reorder snippets (Edit mode), persisting the new order as sortIndex.
+    private func moveSnippets(from source: IndexSet, to destination: Int) {
+        var items = filtered
+        items.move(fromOffsets: source, toOffset: destination)
+        for (index, snippet) in items.enumerated() {
+            snippet.sortIndex = index
+        }
+        try? modelContext.save()
     }
 
     private var groupedList: some View {
@@ -81,10 +92,14 @@ struct SnippetListView: View {
             .contentShape(Rectangle())
             .onTapGesture { copy(snippet) }
             .swipeActions(edge: .leading) {
-                Button { copy(snippet) } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
+                Button {
+                    snippet.isPinned.toggle()
+                    try? modelContext.save()
+                } label: {
+                    Label(snippet.isPinned ? "Unpin" : "Pin",
+                          systemImage: snippet.isPinned ? "pin.slash" : "pin")
                 }
-                .tint(.blue)
+                .tint(.orange)
             }
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
@@ -93,15 +108,7 @@ struct SnippetListView: View {
                 Button { editingSnippet = snippet } label: {
                     Label("Edit", systemImage: "pencil")
                 }
-                .tint(.orange)
-                Button {
-                    snippet.isPinned.toggle()
-                    try? modelContext.save()
-                } label: {
-                    Label(snippet.isPinned ? "Unpin" : "Pin",
-                          systemImage: snippet.isPinned ? "pin.slash" : "pin")
-                }
-                .tint(.indigo)
+                .tint(.gray)
             }
             .contextMenu {
                 Button { copy(snippet) } label: {
@@ -301,7 +308,21 @@ struct SnippetRow: View {
     let snippet: Snippet
     let isCopied: Bool
 
+    private var accent: Color {
+        SnippetColor.color(for: snippet.category?.colorName ?? "blue")
+    }
+
     var body: some View {
+        ZStack {
+            content
+                .opacity(isCopied ? 0 : 1)
+            if isCopied {
+                copiedOverlay
+            }
+        }
+    }
+
+    private var content: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -325,12 +346,19 @@ struct SnippetRow: View {
                         .padding(.top, 2)
                 }
             }
-            Spacer()
-            if isCopied {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .transition(.scale.combined(with: .opacity))
-            }
+            Spacer(minLength: 0)
         }
+    }
+
+    private var copiedOverlay: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(accent)
+            .overlay(
+                Label("Copied!", systemImage: "checkmark.circle.fill")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+            )
+            .frame(maxWidth: .infinity)
+            .transition(.opacity.combined(with: .scale(scale: 0.97)))
     }
 }
