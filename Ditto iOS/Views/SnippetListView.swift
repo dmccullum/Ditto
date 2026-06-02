@@ -13,16 +13,23 @@ struct SnippetListView: View {
     @State private var copiedSnippetID: PersistentIdentifier?
     @State private var collapsedGroups: Set<String> = []
 
+    /// Pinned first, then by sortIndex — a total, stable ordering so the list
+    /// doesn't reshuffle (and visibly "settle") after a reorder writes sortIndex.
+    private func pinnedFirst(_ a: Snippet, _ b: Snippet) -> Bool {
+        if a.isPinned != b.isPinned { return a.isPinned }
+        return a.sortIndex < b.sortIndex
+    }
+
     private var filtered: [Snippet] {
         let base: [Snippet]
         switch selection {
         case .all:
-            base = allSnippets.sorted { $0.isPinned && !$1.isPinned }
+            base = allSnippets.sorted(by: pinnedFirst)
         case .pinned:
             base = allSnippets.filter { $0.isPinned }
         case .category(let cat):
             base = allSnippets.filter { $0.category?.persistentModelID == cat.persistentModelID }
-                .sorted { $0.isPinned && !$1.isPinned }
+                .sorted(by: pinnedFirst)
         }
         guard !searchText.isEmpty else { return base }
         let q = searchText.lowercased()
@@ -96,14 +103,19 @@ struct SnippetListView: View {
         .listStyle(.insetGrouped)
     }
 
-    /// Reorder within a single group, reusing that group's existing sortIndex
-    /// slots so other groups are untouched.
+    /// Reorder within a single group. Renumber sortIndex across the whole
+    /// displayed order (this group reordered, others as-is) so the query order
+    /// matches the on-screen order immediately — no post-drag reshuffle.
     private func moveSnippets(in group: SnippetGroup, from source: IndexSet, to destination: Int) {
-        var items = group.snippets
-        items.move(fromOffsets: source, toOffset: destination)
-        let slots = group.snippets.map(\.sortIndex).sorted()
-        for (i, snippet) in items.enumerated() where i < slots.count {
-            snippet.sortIndex = slots[i]
+        var groupItems = group.snippets
+        groupItems.move(fromOffsets: source, toOffset: destination)
+
+        var fullOrder: [Snippet] = []
+        for g in snippetGroups {
+            fullOrder.append(contentsOf: g.id == group.id ? groupItems : g.snippets)
+        }
+        for (index, snippet) in fullOrder.enumerated() {
+            snippet.sortIndex = index
         }
         try? modelContext.save()
     }
