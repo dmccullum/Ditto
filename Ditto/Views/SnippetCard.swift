@@ -180,6 +180,12 @@ struct SnippetCard: View {
     }
 
     private func duplicate() {
+        // Shift everything after the original down one slot so the copy's
+        // position right after it is deterministic (no sortIndex ties).
+        let all = (try? modelContext.fetch(FetchDescriptor<Snippet>())) ?? []
+        for other in all where other.sortIndex > snippet.sortIndex {
+            other.sortIndex += 1
+        }
         let copy = Snippet(
             title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
             content: snippet.content,

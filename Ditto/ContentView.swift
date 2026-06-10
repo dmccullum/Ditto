@@ -544,10 +544,10 @@ struct ContentView: View {
                 .sorted { $0.copyCount > $1.copyCount }
         }
 
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !query.isEmpty {
             snippets = snippets.filter {
-                $0.title.lowercased().contains(query) || $0.content.lowercased().contains(query)
+                $0.title.localizedStandardContains(query) || $0.content.localizedStandardContains(query)
             }
         }
         return snippets

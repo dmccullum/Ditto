@@ -8,6 +8,9 @@ final class Category {
     var colorName: String = "blue"
     var sortIndex: Int = 0
     var createdAt: Date = Date.now
+    /// Stable identity for App Intents / Spotlight. Optional (schema default
+    /// nil) so existing rows migrate cleanly; backfilled at launch by DittoStore.
+    var uuid: UUID? = nil
 
     @Relationship(deleteRule: .cascade, inverse: \Snippet.category)
     var snippets: [Snippet] = []
@@ -22,5 +25,6 @@ final class Category {
         self.symbolName = symbolName
         self.colorName = colorName
         self.sortIndex = sortIndex
+        self.uuid = UUID()
     }
 }

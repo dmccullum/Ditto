@@ -32,10 +32,9 @@ struct SnippetListView: View {
                 .sorted(by: pinnedFirst)
         }
         guard !searchText.isEmpty else { return base }
-        let q = searchText.lowercased()
         return base.filter {
-            $0.displayTitle.lowercased().contains(q) ||
-            $0.content.lowercased().contains(q)
+            $0.displayTitle.localizedStandardContains(searchText) ||
+            $0.content.localizedStandardContains(searchText)
         }
     }
 
@@ -221,6 +220,11 @@ struct SnippetListView: View {
     }
 
     private func duplicate(_ snippet: Snippet) {
+        // Shift everything after the original down one slot so the copy's
+        // position right after it is deterministic (no sortIndex ties).
+        for other in allSnippets where other.sortIndex > snippet.sortIndex {
+            other.sortIndex += 1
+        }
         let copy = Snippet(
             title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
             content: snippet.content,
@@ -246,6 +250,8 @@ struct SnippetListView: View {
             copiedSnippetID = snippet.persistentModelID
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            // Only clear our own flash — a later copy may own the overlay now.
+            guard copiedSnippetID == snippet.persistentModelID else { return }
             withAnimation { copiedSnippetID = nil }
         }
     }

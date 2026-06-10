@@ -72,7 +72,9 @@ struct SnippetEditorView: View {
             snippet.content = content
             snippet.category = selectedCategory
         } else {
-            modelContext.insert(Snippet(title: title, content: content, category: selectedCategory))
+            modelContext.insert(Snippet(title: title, content: content,
+                                        sortIndex: Snippet.topSortIndex(in: modelContext),
+                                        category: selectedCategory))
         }
         try? modelContext.save()
         dismiss()

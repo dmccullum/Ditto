@@ -35,6 +35,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				DittoApp,
+				Info.plist,
 			);
 			target = CEE2CDAE2FC86C9100AF51F7 /* Ditto */;
 		};
@@ -550,7 +551,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.danielmccullum.ditto;
-				PRODUCT_MODULE_NAME = QuickCopy_2;
+				PRODUCT_MODULE_NAME = Ditto;
 				PRODUCT_NAME = Ditto;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -584,7 +585,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.danielmccullum.ditto;
-				PRODUCT_MODULE_NAME = QuickCopy_2;
+				PRODUCT_MODULE_NAME = Ditto;
 				PRODUCT_NAME = Ditto;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

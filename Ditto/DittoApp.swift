@@ -1,6 +1,6 @@
 //
-//  QuickCopy_2App.swift
-//  QuickCopy 2
+//  DittoApp.swift
+//  Ditto
 //
 //  Created by Daniel McCullum on 5/28/26.
 //
@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import AppIntents
 
 /// Lets the app-level menu commands (⌘N etc.) ask the main window to act.
 @Observable
@@ -22,32 +23,19 @@ final class AppCommands {
 }
 
 @main
-struct QuickCopy_2App: App {
-    /// One database, shared by every window/scene in the app. We build it once
-    /// here and hand the same container to both the main window and the menu bar.
-    let container: ModelContainer
+struct DittoApp: App {
+    /// One database, shared by every window/scene in the app — and with
+    /// App Intents (Shortcuts, Spotlight). Built once in DittoStore.
+    let container: ModelContainer = DittoStore.container
     @State private var commands = AppCommands()
     @State private var settings = AppSettings()
 
     init() {
-        let schema = Schema([Snippet.self, Category.self])
-        // Try CloudKit first; fall back to local store if not yet provisioned.
-        let cloudConfig = ModelConfiguration(cloudKitDatabase: .automatic)
-        let localConfig = ModelConfiguration()
-        do {
-            container = try ModelContainer(for: schema, configurations: cloudConfig)
-        } catch {
-            do {
-                container = try ModelContainer(for: schema, configurations: localConfig)
-            } catch {
-                // Last resort: the local store can't be opened (e.g. an
-                // incompatible schema change). Move it aside — never delete —
-                // so the data stays recoverable, then start fresh.
-                StoreRecovery.backupStore()
-                container = try! ModelContainer(for: schema, configurations: localConfig)
-            }
+        // Keep Spotlight and the Shortcuts snippet vocabulary in sync.
+        Task {
+            await DittoSpotlight.refresh()
+            DittoShortcuts.updateAppShortcutParameters()
         }
-        SampleData.seedIfNeeded(container.mainContext)
     }
 
     var body: some Scene {

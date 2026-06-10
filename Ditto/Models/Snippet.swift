@@ -16,6 +16,9 @@ final class Snippet {
     var copyCount: Int = 0
     var isPinned: Bool = false
     var category: Category? = nil
+    /// Stable identity for App Intents / Spotlight. Optional (schema default
+    /// nil) so existing rows migrate cleanly; backfilled at launch by DittoStore.
+    var uuid: UUID? = nil
 
     init(
         title: String = "",
@@ -29,6 +32,7 @@ final class Snippet {
         self.sortIndex = sortIndex
         self.isPinned = isPinned
         self.category = category
+        self.uuid = UUID()
     }
 
     var urlValue: URL? {
@@ -54,5 +58,14 @@ final class Snippet {
         content
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\n", with: " ")
+    }
+
+    /// A sortIndex below every existing snippet, so a newly created snippet
+    /// lands at a deterministic spot (the top) instead of tying with index 0.
+    static func topSortIndex(in context: ModelContext) -> Int {
+        var descriptor = FetchDescriptor<Snippet>(sortBy: [SortDescriptor(\Snippet.sortIndex)])
+        descriptor.fetchLimit = 1
+        let lowest = (try? context.fetch(descriptor))?.first?.sortIndex ?? 1
+        return lowest - 1
     }
 }

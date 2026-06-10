@@ -59,8 +59,9 @@ enum SnippetURL {
             category = resolveCategory(named: name, context: context)
         }
 
-        let nextIndex = ((try? context.fetch(FetchDescriptor<Snippet>())) ?? [])
-            .map(\.sortIndex).max() ?? -1
+        var highest = FetchDescriptor<Snippet>(sortBy: [SortDescriptor(\Snippet.sortIndex, order: .reverse)])
+        highest.fetchLimit = 1
+        let nextIndex = (try? context.fetch(highest))?.first?.sortIndex ?? -1
         let snippet = Snippet(title: title, content: content,
                               sortIndex: nextIndex + 1, category: category)
         context.insert(snippet)

@@ -1,34 +1,23 @@
 import SwiftUI
 import SwiftData
+import AppIntents
 
 @main
 struct DittoiOSApp: App {
-    let container: ModelContainer
+    /// One database shared with App Intents (Siri, Shortcuts, Spotlight).
+    let container: ModelContainer = DittoStore.container
     @State private var settings = AppSettings()
 
     init() {
-        let schema = Schema([Snippet.self, Category.self])
-        // Try CloudKit first; fall back to local store if iCloud isn't available
-        // (e.g. free Personal Team without the CloudKit entitlement).
-        let cloudConfig = ModelConfiguration(cloudKitDatabase: .automatic)
-        let localConfig = ModelConfiguration()
-        do {
-            container = try ModelContainer(for: schema, configurations: cloudConfig)
-        } catch {
-            do {
-                container = try ModelContainer(for: schema, configurations: localConfig)
-            } catch {
-                // Last resort: the local store can't be opened. Move it aside —
-                // never delete — so the data stays recoverable, then start fresh.
-                StoreRecovery.backupStore()
-                container = try! ModelContainer(for: schema, configurations: localConfig)
-            }
-        }
-        SampleData.seedIfNeeded(container.mainContext)
         // Give the context its own undo manager. SwiftData then registers undo
         // operations and surfaces it to SwiftUI's environment, which enables the
         // system shake-to-undo and three-finger-swipe gestures on iOS.
         container.mainContext.undoManager = UndoManager()
+        // Keep Spotlight and Siri's snippet vocabulary in sync with the library.
+        Task {
+            await DittoSpotlight.refresh()
+            DittoShortcuts.updateAppShortcutParameters()
+        }
     }
 
     var body: some Scene {

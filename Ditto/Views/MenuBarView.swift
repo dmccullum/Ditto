@@ -157,10 +157,10 @@ struct MenuBarView: View {
     // MARK: - Derived data
 
     private var filteredSnippets: [Snippet] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return allSnippets }
         return allSnippets.filter {
-            $0.title.lowercased().contains(query) || $0.content.lowercased().contains(query)
+            $0.title.localizedStandardContains(query) || $0.content.localizedStandardContains(query)
         }
     }
 
