@@ -148,11 +148,14 @@ struct SnippetCard: View {
                         Text("\(snippet.content.count) chars")
                             .monospacedDigit()
                     }
-                    .foregroundStyle(accent)
+                    // Quiet at rest; full accent once the card is hovered.
+                    .foregroundStyle(accent.opacity(isHovering ? 1 : 0.7))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(
-                        Capsule().fill(accent.opacity(isHoveringPreviewButton ? 0.22 : 0.10))
+                        Capsule().fill(accent.opacity(
+                            isHoveringPreviewButton ? 0.22 : (isHovering ? 0.10 : 0.06)
+                        ))
                     )
                 }
                 .buttonStyle(.plain)
