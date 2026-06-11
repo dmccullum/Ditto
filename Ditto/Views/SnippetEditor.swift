@@ -39,6 +39,12 @@ struct SnippetEditor: View {
             Text(isEditing ? "Edit Snippet" : "New Snippet")
                 .font(.title2.bold())
 
+            field("Name (optional)") {
+                TextField("e.g. Daily content tags", text: $title)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($focus, equals: .name)
+            }
+
             field("Content", trailing: "\(content.count) characters") {
                 TextEditor(text: $content)
                     .font(.body)
@@ -54,16 +60,11 @@ struct SnippetEditor: View {
                             .strokeBorder(.quaternary)
                     )
                     .focused($focus, equals: .content)
+                    // TextEditor would insert a literal tab; cycle focus instead.
                     .onKeyPress(.tab) {
                         focus = .name
                         return .handled
                     }
-            }
-
-            field("Name (optional)") {
-                TextField("e.g. Daily content tags", text: $title)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($focus, equals: .name)
             }
 
             field("Category") {

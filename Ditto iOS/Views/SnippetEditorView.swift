@@ -20,14 +20,14 @@ struct SnippetEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Name (optional)") {
+                    TextField("e.g. Daily hashtags", text: $title)
+                }
+
                 Section("Content") {
                     TextEditor(text: $content)
                         .frame(minHeight: 120)
                         .focused($contentFocused)
-                }
-
-                Section("Name (optional)") {
-                    TextField("e.g. Daily hashtags", text: $title)
                 }
 
                 Section("Category") {
