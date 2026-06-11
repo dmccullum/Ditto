@@ -129,8 +129,11 @@ struct SnippetListView: View {
     @ViewBuilder
     private func rowView(_ snippet: Snippet) -> some View {
         SnippetRow(snippet: snippet, isCopied: copiedSnippetID == snippet.persistentModelID)
-            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-            .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+            // Rows draw their own accent-tinted cards (matching the Mac app),
+            // so the List chrome — separators and row backgrounds — goes away.
+            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
             .contentShape(Rectangle())
             .onTapGesture { copy(snippet) }
             .swipeActions(edge: .leading) {
@@ -368,14 +371,22 @@ struct SnippetRow: View {
         }
     }
 
+    /// The same colorful card recipe as the Mac app: accent gradient fill,
+    /// hairline accent border, category icon up front.
     private var content: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: snippet.category?.symbolName ?? "doc.text")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(accent)
+                .frame(width: 24)
+                .padding(.top, 2)
+
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     if snippet.isPinned {
                         Image(systemName: "pin.fill")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(accent.opacity(0.7))
                     }
                     Text(snippet.displayTitle)
                         .font(.body.weight(.medium))
@@ -385,19 +396,26 @@ struct SnippetRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                if let cat = snippet.category {
-                    Label(cat.name, systemImage: cat.symbolName)
-                        .font(.caption)
-                        .foregroundStyle(SnippetColor.color(for: cat.colorName))
-                        .padding(.top, 2)
-                }
             }
             Spacer(minLength: 0)
         }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(LinearGradient(
+                    colors: [accent.opacity(0.14), accent.opacity(0.04)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(accent.opacity(0.18), lineWidth: 1)
+        )
     }
 
     private var copiedOverlay: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
             .fill(accent)
             .overlay(
                 Label("Copied!", systemImage: "checkmark.circle.fill")

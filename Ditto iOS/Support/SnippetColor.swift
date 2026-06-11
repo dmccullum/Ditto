@@ -1,24 +1,39 @@
 import SwiftUI
 
 enum SnippetColor: String, CaseIterable, Identifiable {
-    case red, orange, yellow, green, mint, teal, cyan, blue, indigo, purple, pink, brown
+    // Declared in hue order so the picker grid reads like a palette.
+    // System colors adapt to light/dark; the custom shades are fixed
+    // mid-tones chosen to hold up in both modes.
+    case red, coral, orange, gold, yellow, lime, green, forest, mint, teal,
+         cyan, sky, blue, navy, indigo, lavender, purple, plum, pink, rose,
+         brown, slate
 
     var id: String { rawValue }
 
     var color: Color {
         switch self {
-        case .red:    return .red
-        case .orange: return .orange
-        case .yellow: return .yellow
-        case .green:  return .green
-        case .mint:   return .mint
-        case .teal:   return .teal
-        case .cyan:   return .cyan
-        case .blue:   return .blue
-        case .indigo: return .indigo
-        case .purple: return .purple
-        case .pink:   return .pink
-        case .brown:  return .brown
+        case .red:      return .red
+        case .coral:    return Color(red: 1.00, green: 0.45, blue: 0.40)
+        case .orange:   return .orange
+        case .gold:     return Color(red: 0.85, green: 0.65, blue: 0.13)
+        case .yellow:   return .yellow
+        case .lime:     return Color(red: 0.55, green: 0.76, blue: 0.22)
+        case .green:    return .green
+        case .forest:   return Color(red: 0.18, green: 0.54, blue: 0.34)
+        case .mint:     return .mint
+        case .teal:     return .teal
+        case .cyan:     return .cyan
+        case .sky:      return Color(red: 0.33, green: 0.69, blue: 0.95)
+        case .blue:     return .blue
+        case .navy:     return Color(red: 0.20, green: 0.32, blue: 0.62)
+        case .indigo:   return .indigo
+        case .lavender: return Color(red: 0.62, green: 0.54, blue: 0.93)
+        case .purple:   return .purple
+        case .plum:     return Color(red: 0.56, green: 0.27, blue: 0.52)
+        case .pink:     return .pink
+        case .rose:     return Color(red: 0.91, green: 0.27, blue: 0.55)
+        case .brown:    return .brown
+        case .slate:    return Color(red: 0.45, green: 0.51, blue: 0.58)
         }
     }
 

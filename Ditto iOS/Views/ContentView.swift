@@ -142,19 +142,25 @@ struct ContentView: View {
     private var sidebar: some View {
         List(selection: $selection) {
             Section {
-                Label("All Snippets", systemImage: "doc.on.doc")
-                    .tag(SidebarSelection.all)
+                Label { Text("All Snippets") } icon: {
+                    sidebarChip("doc.on.doc", .blue)
+                }
+                .tag(SidebarSelection.all)
                 if !pinnedSnippets.isEmpty {
-                    Label("Pinned", systemImage: "pin.fill")
-                        .tag(SidebarSelection.pinned)
+                    Label { Text("Pinned") } icon: {
+                        sidebarChip("pin.fill", .orange)
+                    }
+                    .tag(SidebarSelection.pinned)
                 }
             }
 
             Section("Categories") {
                 ForEach(categories) { category in
-                    Label(category.name, systemImage: category.symbolName)
-                        .foregroundStyle(SnippetColor.color(for: category.colorName))
-                        .tag(SidebarSelection.category(category))
+                    Label { Text(category.name) } icon: {
+                        sidebarChip(category.symbolName,
+                                    SnippetColor.color(for: category.colorName))
+                    }
+                    .tag(SidebarSelection.category(category))
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
                                 modelContext.delete(category)
@@ -200,5 +206,17 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $isShowingSettings) { SettingsView() }
+    }
+
+    /// A Settings-style colored icon chip for sidebar rows.
+    private func sidebarChip(_ symbol: String, _ color: Color) -> some View {
+        Image(systemName: symbol)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(width: 28, height: 28)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(color.gradient)
+            )
     }
 }
