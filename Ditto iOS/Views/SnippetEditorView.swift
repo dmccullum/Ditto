@@ -12,7 +12,7 @@ struct SnippetEditorView: View {
     @State private var title = ""
     @State private var content = ""
     @State private var selectedCategory: Category?
-    @FocusState private var contentFocused: Bool
+    @FocusState private var nameFocused: Bool
 
     private var isEditing: Bool { snippet != nil }
     private var isEmpty: Bool { content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -22,12 +22,12 @@ struct SnippetEditorView: View {
             Form {
                 Section("Name (optional)") {
                     TextField("e.g. Daily hashtags", text: $title)
+                        .focused($nameFocused)
                 }
 
                 Section("Content") {
                     TextEditor(text: $content)
                         .frame(minHeight: 120)
-                        .focused($contentFocused)
                 }
 
                 Section("Category") {
@@ -58,7 +58,7 @@ struct SnippetEditorView: View {
                     selectedCategory = snippet.category
                 } else {
                     selectedCategory = defaultCategory
-                    contentFocused = true
+                    nameFocused = true
                 }
             }
         }

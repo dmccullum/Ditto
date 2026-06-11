@@ -95,10 +95,9 @@ struct SnippetEditor: View {
         .frame(width: 460, height: 470)
         .onAppear {
             loadInitialValues()
-            // Pasted/new snippets land cursor sensibly: empty content -> Content,
-            // pre-filled content (e.g. from paste) -> Name.
+            // Cursor starts in Name (the first field); Tab drops into Content.
             DispatchQueue.main.async {
-                focus = content.isEmpty ? .content : .name
+                focus = .name
             }
         }
     }
