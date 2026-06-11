@@ -23,6 +23,8 @@ struct SnippetCard: View {
 
     @State private var didCopy = false
     @State private var isHovering = false
+    @State private var isShowingPreview = false
+    @State private var isHoveringPreviewButton = false
 
     private var accent: Color {
         SnippetColor.color(for: snippet.category?.colorName ?? "blue")
@@ -38,9 +40,9 @@ struct SnippetCard: View {
 
     private var cardMinHeight: CGFloat {
         switch sizeLevel {
-        case 0:  return 76
-        case 1:  return 92
-        default: return 110
+        case 0:  return 68
+        case 1:  return 82
+        default: return 98
         }
     }
 
@@ -85,6 +87,7 @@ struct SnippetCard: View {
         )
         .contextMenu {
             Button("Copy", systemImage: "doc.on.doc", action: copy)
+            Button("Preview", systemImage: "eye") { isShowingPreview = true }
             Button("Edit…", systemImage: "pencil", action: onEdit)
             Button("Duplicate", systemImage: "plus.square.on.square", action: duplicate)
             Button("Copy Share Link", systemImage: "link", action: copyShareLink)
@@ -100,7 +103,13 @@ struct SnippetCard: View {
             Divider()
             Button("Delete", systemImage: "trash", role: .destructive, action: delete)
         }
-        .help("Click to copy · drag to reorder, into a category, or out to another app")
+        .popover(isPresented: $isShowingPreview, arrowEdge: .bottom) {
+            SnippetPreview(
+                snippet: snippet,
+                onCopy: { isShowingPreview = false; copy() },
+                onEdit: { isShowingPreview = false; onEdit() }
+            )
+        }
     }
 
     private var content: some View {
@@ -130,9 +139,25 @@ struct SnippetCard: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 4) {
-                Text("\(snippet.content.count) chars")
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+                // Always-visible preview chip: eye + char count in one capsule,
+                // brightening under the cursor so it reads as a button.
+                Button { isShowingPreview = true } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "eye")
+                            .font(.caption2.weight(.semibold))
+                        Text("\(snippet.content.count) chars")
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(accent)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule().fill(accent.opacity(isHoveringPreviewButton ? 0.22 : 0.10))
+                    )
+                }
+                .buttonStyle(.plain)
+                .onHover { isHoveringPreviewButton = $0 }
+                .help("Preview the full snippet")
                 Spacer()
                 Image(systemName: "doc.on.doc")
                 Text("Click to copy")
@@ -217,6 +242,77 @@ struct SnippetCard: View {
     }
 }
 
+/// A Quick Look-style popover showing a snippet's complete text — the card
+/// itself truncates to a few lines. Text is selectable for partial copies.
+private struct SnippetPreview: View {
+    let snippet: Snippet
+    var onCopy: () -> Void
+    var onEdit: () -> Void
+
+    private var accent: Color {
+        SnippetColor.color(for: snippet.category?.colorName ?? "blue")
+    }
+
+    /// Long content scrolls inside a fixed height; short content hugs.
+    private var isLong: Bool {
+        snippet.content.count > 700 ||
+        snippet.content.filter { $0 == "\n" }.count > 16
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: snippet.category?.symbolName ?? "doc.text")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(accent)
+                Text(snippet.displayTitle)
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer()
+                Text("\(snippet.content.count) chars")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+
+            Divider()
+
+            if isLong {
+                ScrollView {
+                    fullText
+                }
+                .frame(height: 380)
+            } else {
+                fullText
+            }
+
+            Divider()
+
+            HStack {
+                if let category = snippet.category {
+                    Label(category.name, systemImage: category.symbolName)
+                        .font(.caption)
+                        .foregroundStyle(accent)
+                }
+                Spacer()
+                Button("Edit…", action: onEdit)
+                Button("Copy", action: onCopy)
+                    .buttonStyle(.borderedProminent)
+            }
+            .controlSize(.small)
+        }
+        .padding(14)
+        .frame(width: 400)
+    }
+
+    private var fullText: some View {
+        Text(snippet.content)
+            .font(.body)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// A dashed "+" tile shown at the end of a populated grid to add a snippet.
 struct AddSnippetCard: View {
     var sizeLevel: Int = 2
@@ -225,9 +321,9 @@ struct AddSnippetCard: View {
 
     private var cardMinHeight: CGFloat {
         switch sizeLevel {
-        case 0:  return 76
-        case 1:  return 92
-        default: return 110
+        case 0:  return 68
+        case 1:  return 82
+        default: return 98
         }
     }
 

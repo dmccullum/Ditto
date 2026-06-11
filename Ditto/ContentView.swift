@@ -339,8 +339,10 @@ struct ContentView: View {
     }
 
     /// Group by category, in sidebar order, with uncategorized snippets last.
+    /// Built from `gridSnippets` (not the raw query) so that mid-drag the
+    /// sections track the live order and moves animate, same as the flat grid.
     private var categoryGroups: [SnippetGroup] {
-        let snippets = filteredSnippets
+        let snippets = gridSnippets
         var groups: [SnippetGroup] = []
         for category in categories {
             let items = snippets.filter {
@@ -513,8 +515,10 @@ struct ContentView: View {
         Binding(get: { settings.grouping }, set: { settings.grouping = $0 })
     }
 
-    /// Reordering only makes sense in the manually-ordered views.
+    /// Reordering only makes sense in the manually-ordered views. Date Added
+    /// grouping is excluded: there the order is intrinsic (matches iOS).
     private var isReorderable: Bool {
+        if isGrouped && settings.grouping == .dateAdded { return false }
         switch selection {
         case .all, .category: return true
         case .frequent: return false
@@ -613,6 +617,10 @@ struct ContentView: View {
     /// On drop, persist the local order into `sortIndex`, preserving the slots
     /// of any snippets filtered out of the current view.
     private func commitSnippetOrder() {
+        draggedSnippet = nil
+        // A drop in a non-reorderable view (Frequently Used, Date Added
+        // grouping) must not rewrite the manual order with that view's own.
+        guard isReorderable else { return }
         let shown = displayOrder
         guard !shown.isEmpty else { return }
         let shownIDs = Set(shown.map(\.persistentModelID))
@@ -630,7 +638,6 @@ struct ContentView: View {
         for (index, snippet) in newGlobal.enumerated() where snippet.sortIndex != index {
             snippet.sortIndex = index
         }
-        draggedSnippet = nil
         try? modelContext.save()
     }
 
