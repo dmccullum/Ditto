@@ -272,11 +272,11 @@ private struct SnippetPreview: View {
                     .font(.headline)
                     .lineLimit(1)
                 Spacer()
-                Text("\(snippet.content.count) chars")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+                Button("Edit…", action: onEdit)
+                Button("Copy", action: onCopy)
+                    .buttonStyle(.borderedProminent)
             }
+            .controlSize(.small)
 
             Divider()
 
@@ -298,11 +298,11 @@ private struct SnippetPreview: View {
                         .foregroundStyle(accent)
                 }
                 Spacer()
-                Button("Edit…", action: onEdit)
-                Button("Copy", action: onCopy)
-                    .buttonStyle(.borderedProminent)
+                Text("\(snippet.content.count) chars")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
-            .controlSize(.small)
         }
         .padding(14)
         .frame(width: 400)
