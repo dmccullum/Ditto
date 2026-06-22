@@ -13,23 +13,19 @@ struct SnippetListView: View {
     @State private var copiedSnippetID: PersistentIdentifier?
     @State private var collapsedGroups: Set<String> = []
 
-    /// Pinned first, then by sortIndex — a total, stable ordering so the list
-    /// doesn't reshuffle (and visibly "settle") after a reorder writes sortIndex.
-    private func pinnedFirst(_ a: Snippet, _ b: Snippet) -> Bool {
-        if a.isPinned != b.isPinned { return a.isPinned }
-        return a.sortIndex < b.sortIndex
-    }
-
     private var filtered: [Snippet] {
+        // Ordered purely by sortIndex (allSnippets is already @Query-sorted that
+        // way). Pinning does NOT float items to the top here — it only adds a
+        // badge — so a pin never reorders the list. The sidebar's Pinned filter
+        // is how you gather pinned snippets together.
         let base: [Snippet]
         switch selection {
         case .all:
-            base = allSnippets.sorted(by: pinnedFirst)
+            base = allSnippets
         case .pinned:
             base = allSnippets.filter { $0.isPinned }
         case .category(let cat):
             base = allSnippets.filter { $0.category?.persistentModelID == cat.persistentModelID }
-                .sorted(by: pinnedFirst)
         }
         guard !searchText.isEmpty else { return base }
         return base.filter {
@@ -61,12 +57,11 @@ struct SnippetListView: View {
         List {
             ForEach(filtered) { snippet in rowView(snippet) }
                 .onMove(perform: moveSnippets)
-                .onDelete(perform: deleteSnippets)
         }
         .listStyle(.plain)
     }
 
-    /// Reorder snippets (Edit mode), persisting the new order as sortIndex.
+    /// Reorder snippets via long-press drag, persisting the new order as sortIndex.
     private func moveSnippets(from source: IndexSet, to destination: Int) {
         var items = filtered
         items.move(fromOffsets: source, toOffset: destination)
@@ -76,12 +71,8 @@ struct SnippetListView: View {
         try? modelContext.save()
     }
 
-    /// Delete from Edit mode only — the custom trailing swipe (Edit) overrides
-    /// the default swipe-to-delete, so this surfaces just the edit-mode control.
-    private func deleteSnippets(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(filtered[index])
-        }
+    private func delete(_ snippet: Snippet) {
+        modelContext.delete(snippet)
         try? modelContext.save()
     }
 
@@ -92,7 +83,6 @@ struct SnippetListView: View {
                     if !collapsedGroups.contains(group.id) {
                         ForEach(group.snippets) { snippet in rowView(snippet) }
                             .onMove { source, dest in moveSnippets(in: group, from: source, to: dest) }
-                            .onDelete { offsets in deleteSnippets(in: group, at: offsets) }
                     }
                 } header: {
                     groupHeader(group)
@@ -119,13 +109,6 @@ struct SnippetListView: View {
         try? modelContext.save()
     }
 
-    private func deleteSnippets(in group: SnippetGroup, at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(group.snippets[index])
-        }
-        try? modelContext.save()
-    }
-
     @ViewBuilder
     private func rowView(_ snippet: Snippet) -> some View {
         SnippetRow(snippet: snippet, isCopied: copiedSnippetID == snippet.persistentModelID)
@@ -138,6 +121,8 @@ struct SnippetListView: View {
             .onTapGesture { copy(snippet) }
             .swipeActions(edge: .leading) {
                 Button {
+                    // Just toggles the badge — pinning doesn't reorder the list,
+                    // so there's nothing to animate around the swipe dismissal.
                     snippet.isPinned.toggle()
                     try? modelContext.save()
                 } label: {
@@ -146,7 +131,15 @@ struct SnippetListView: View {
                 }
                 .tint(.orange)
             }
-            .swipeActions(edge: .trailing) {
+            // Delete + Edit on the trailing edge. Full swipe is off so the
+            // gesture only reveals the buttons — delete takes a deliberate tap.
+            // Delete is the single delete path (no Edit-mode minus anymore), so
+            // there's no second handler to race it; deletes are undoable via
+            // shake (the context's undo manager).
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) { delete(snippet) } label: {
+                    Label("Delete", systemImage: "trash")
+                }
                 Button { editingSnippet = snippet } label: {
                     Label("Edit", systemImage: "pencil")
                 }
@@ -400,14 +393,19 @@ struct SnippetRow: View {
             Spacer(minLength: 0)
         }
         .padding(12)
-        .background(
+        // Opaque base under the translucent gradient (as the Mac card does), so
+        // cards occlude each other cleanly while a pin reorders the list instead
+        // of ghosting through one another mid-animation.
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground))
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(LinearGradient(
                     colors: [accent.opacity(0.14), accent.opacity(0.04)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ))
-        )
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(accent.opacity(0.18), lineWidth: 1)
