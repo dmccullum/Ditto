@@ -17,35 +17,74 @@
   },
   "groups" : [
     {
+      "blur-material" : 0.25,
       "layers" : [
         {
           "fill" : {
-            "automatic-gradient" : "extended-gray:1.00000,1.00000"
+            "linear-gradient" : [
+              "srgb:0.70308,0.92620,1.00000,1.00000",
+              "srgb:0.93433,1.00000,0.97589,1.00000"
+            ],
+            "orientation" : {
+              "start" : {
+                "x" : 0.5,
+                "y" : 0
+              },
+              "stop" : {
+                "x" : 0.5,
+                "y" : 0.7
+              }
+            }
           },
-          "image-name" : "Ditto-01 3.svg",
-          "name" : "Ditto-01 3",
+          "glass" : true,
+          "image-name" : "Ditto layers copy-02.svg",
+          "name" : "Ditto layers copy-02",
+          "opacity" : 0.8,
           "position-specializations" : [
             {
               "idiom" : "square",
               "value" : {
-                "scale" : 0.95,
+                "scale" : 1,
                 "translation-in-points" : [
-                  25,
-                  10
-                ]
-              }
-            },
-            {
-              "idiom" : "watchOS",
-              "value" : {
-                "scale" : 0.9,
-                "translation-in-points" : [
-                  25,
-                  10
+                  0,
+                  0
                 ]
               }
             }
           ]
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "fill" : {
+            "linear-gradient" : [
+              "srgb:0.69553,0.83734,1.00000,1.00000",
+              "srgb:0.50319,0.65017,1.00000,1.00000"
+            ],
+            "orientation" : {
+              "start" : {
+                "x" : 0.5,
+                "y" : 0
+              },
+              "stop" : {
+                "x" : 0.5,
+                "y" : 0.7
+              }
+            }
+          },
+          "image-name" : "Ditto layers copy-01.svg",
+          "name" : "Ditto layers copy-01",
+          "opacity" : 0.8
         }
       ],
       "shadow" : {
