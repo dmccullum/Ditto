@@ -76,11 +76,6 @@ struct DittoApp: App {
         }
         .windowResizability(.contentSize)
 
-        // Custom About window (Ditto → About Ditto).
-        Window("About Ditto", id: "about") {
-            AboutView()
-        }
-        .windowResizability(.contentSize)
     }
 }
 
@@ -152,8 +147,8 @@ struct DittoCommands: Commands {
         // Replace the default About panel with our custom window.
         CommandGroup(replacing: .appInfo) {
             Button("About Ditto") {
-                openWindow(id: "about")
                 NSApp.activate(ignoringOtherApps: true)
+                AboutWindowController.shared.show()
             }
         }
     }
