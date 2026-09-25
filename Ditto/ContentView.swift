@@ -33,7 +33,10 @@ struct ContentView: View {
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
 
     @State private var selection: SidebarSelection = .all
-    @State private var searchText = ""
+    @State private var isQuickSearchPresented = false
+    @State private var quickSearchText = ""
+    @State private var quickSearchSelection: PersistentIdentifier?
+    @FocusState private var quickSearchIsFocused: Bool
 
     // Persisted card size: 0 = smallest … 4 = largest. The grid is adaptive,
     // so the number of columns follows the window width while cards stay near
@@ -75,6 +78,23 @@ struct ContentView: View {
             sidebar
         } detail: {
             detail
+                .overlay(alignment: .top) {
+                    if isQuickSearchPresented {
+                        quickSearchPanel
+                            .padding(.top, 28)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+        }
+        .background {
+            TypeToSearchMonitor { characters in
+                if isQuickSearchPresented {
+                    quickSearchText.append(contentsOf: characters)
+                    quickSearchIsFocused = true
+                } else {
+                    beginQuickSearch(with: characters)
+                }
+            }
         }
         .sheet(item: $editingSnippet) { SnippetEditor(snippet: $0) }
         .sheet(isPresented: $isCreatingSnippet) {
@@ -123,6 +143,9 @@ struct ContentView: View {
             // the time the grid renders straight from the query, so ordinary
             // clicks don't pay for a mirror resync.
             if dragged != nil { displayOrder = filteredSnippets }
+        }
+        .onChange(of: quickSearchText) { _, _ in
+            quickSearchSelection = quickSearchResults.first?.persistentModelID
         }
     }
 
@@ -248,12 +271,11 @@ struct ContentView: View {
             }
         }
         .navigationTitle(detailTitle)
-        .searchable(text: $searchText, placement: .toolbar, prompt: "Search snippets")
         .toolbar {
             // Native toolbar items: macOS auto-groups them into pills and fits
             // each button's highlight, matching system apps like Reminders.
-            if isAllView {
-                ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                if isAllView {
                     Menu {
                         Picker("Group By", selection: groupingBinding) {
                             ForEach(SnippetGrouping.allCases) { option in
@@ -268,9 +290,7 @@ struct ContentView: View {
                     .menuIndicator(.hidden)
                     .help("Group By")
                 }
-            }
 
-            ToolbarItemGroup(placement: .primaryAction) {
                 Button { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) } label: {
                     Image(systemName: "minus.magnifyingglass")
                 }
@@ -282,14 +302,26 @@ struct ContentView: View {
                 }
                 .disabled(sizeLevel >= Self.maxSizeLevel)
                 .help("Zoom In (⌘+)")
-            }
 
-            ToolbarItem(placement: .primaryAction) {
                 Button { isCreatingSnippet = true } label: {
                     Image(systemName: "plus")
                 }
                 .help("New Snippet (⌘N)")
             }
+
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    if isQuickSearchPresented { dismissQuickSearch() }
+                    else { beginQuickSearch() }
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+                .keyboardShortcut("f", modifiers: .command)
+                .help("Quick Search (⌘F)")
+            }
+
         }
     }
 
@@ -468,22 +500,18 @@ struct ContentView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if !searchText.isEmpty {
-            ContentUnavailableView.search(text: searchText)
-        } else {
-            switch selection {
-            case .frequent:
-                ContentUnavailableView("Nothing Frequent Yet", systemImage: "flame",
-                    description: Text("Snippets you copy often will show up here."))
-            default:
-                ContentUnavailableView {
-                    Label("No Snippets Yet", systemImage: "sparkles")
-                } description: {
-                    Text("Add a snippet to start building your library.")
-                } actions: {
-                    Button("New Snippet", systemImage: "plus") { isCreatingSnippet = true }
-                        .buttonStyle(.borderedProminent)
-                }
+        switch selection {
+        case .frequent:
+            ContentUnavailableView("Nothing Frequent Yet", systemImage: "flame",
+                description: Text("Snippets you copy often will show up here."))
+        default:
+            ContentUnavailableView {
+                Label("No Snippets Yet", systemImage: "sparkles")
+            } description: {
+                Text("Add a snippet to start building your library.")
+            } actions: {
+                Button("New Snippet", systemImage: "plus") { isCreatingSnippet = true }
+                    .buttonStyle(.borderedProminent)
             }
         }
     }
@@ -548,12 +576,6 @@ struct ContentView: View {
                 .sorted { $0.copyCount > $1.copyCount }
         }
 
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !query.isEmpty {
-            snippets = snippets.filter {
-                $0.title.localizedStandardContains(query) || $0.content.localizedStandardContains(query)
-            }
-        }
         return snippets
     }
 
@@ -561,6 +583,200 @@ struct ContentView: View {
     /// local mirror only while a drag is in progress.
     private var gridSnippets: [Snippet] {
         (draggedSnippet == nil || displayOrder.isEmpty) ? filteredSnippets : displayOrder
+    }
+
+    // MARK: - Quick search
+
+    private var quickSearchResults: [Snippet] {
+        SnippetSearch.results(for: quickSearchText, in: allSnippets)
+    }
+
+    private var selectedQuickSearchSnippet: Snippet? {
+        guard let id = quickSearchSelection else { return quickSearchResults.first }
+        return quickSearchResults.first { $0.persistentModelID == id }
+    }
+
+    private var quickSearchPanel: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search every snippet", text: $quickSearchText)
+                    .textFieldStyle(.plain)
+                    .font(.title3)
+                    .focused($quickSearchIsFocused)
+                    .onKeyPress(.upArrow) {
+                        moveQuickSearchSelection(by: -1)
+                        return .handled
+                    }
+                    .onKeyPress(.downArrow) {
+                        moveQuickSearchSelection(by: 1)
+                        return .handled
+                    }
+                    .onKeyPress(.return) {
+                        if NSEvent.modifierFlags.contains(.command) {
+                            revealQuickSearchSelection()
+                        } else {
+                            copyQuickSearchSelection()
+                        }
+                        return .handled
+                    }
+                    .onKeyPress(.escape) {
+                        dismissQuickSearch()
+                        return .handled
+                    }
+                if !quickSearchText.isEmpty {
+                    Button {
+                        quickSearchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(14)
+
+            Divider()
+
+            if quickSearchResults.isEmpty {
+                ContentUnavailableView.search(text: quickSearchText)
+                    .frame(height: 180)
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 2) {
+                            ForEach(quickSearchResults) { snippet in
+                                quickSearchRow(snippet)
+                                    .id(snippet.persistentModelID)
+                            }
+                        }
+                        .padding(6)
+                    }
+                    .frame(maxHeight: 360)
+                    .onChange(of: quickSearchSelection) { _, id in
+                        guard let id else { return }
+                        withAnimation(.easeOut(duration: 0.12)) {
+                            proxy.scrollTo(id, anchor: .center)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+            HStack(spacing: 14) {
+                Label("navigate", systemImage: "arrow.up.arrow.down")
+                Label("copy", systemImage: "return")
+                Text("⌘↩ show in list")
+                Spacer()
+                Text("Esc to close")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .frame(width: 520)
+        .background {
+            ClickOutsideSearchMonitor(onClickOutside: dismissQuickSearch)
+        }
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6))
+        }
+        // A broad ambient shadow plus tighter casts in both directions keeps
+        // the panel distinct even over Ditto's dark toolbar and card grid.
+        .shadow(color: .black.opacity(0.24), radius: 64, y: 10)
+        .shadow(color: .black.opacity(0.30), radius: 26, y: 2)
+        .shadow(color: .black.opacity(0.22), radius: 18, y: -8)
+    }
+
+    private func quickSearchRow(_ snippet: Snippet) -> some View {
+        let selected = quickSearchSelection == snippet.persistentModelID
+        let accent = SnippetColor.color(for: snippet.category?.colorName ?? "blue")
+
+        return Button {
+            quickSearchSelection = snippet.persistentModelID
+            copyQuickSearchSelection()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: snippet.category?.symbolName ?? "doc.text")
+                    .foregroundStyle(accent)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(snippet.displayTitle)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                    Text(snippet.preview)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                if let category = snippet.category {
+                    Text(category.name)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selected ? accent.opacity(0.18) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            if hovering { quickSearchSelection = snippet.persistentModelID }
+        }
+    }
+
+    private func beginQuickSearch(with characters: String = "") {
+        quickSearchText = characters
+        isQuickSearchPresented = true
+        quickSearchSelection = SnippetSearch.results(for: characters, in: allSnippets).first?.persistentModelID
+        DispatchQueue.main.async { quickSearchIsFocused = true }
+    }
+
+    private func dismissQuickSearch() {
+        withAnimation(.easeOut(duration: 0.12)) { isQuickSearchPresented = false }
+        quickSearchText = ""
+        quickSearchSelection = nil
+    }
+
+    private func moveQuickSearchSelection(by offset: Int) {
+        let results = quickSearchResults
+        guard !results.isEmpty else { return }
+        let current = results.firstIndex { $0.persistentModelID == quickSearchSelection } ?? 0
+        let next = min(max(current + offset, 0), results.count - 1)
+        quickSearchSelection = results[next].persistentModelID
+    }
+
+    private func copyQuickSearchSelection() {
+        guard let snippet = selectedQuickSearchSnippet else { return }
+        Clipboard.copy(snippet.content)
+
+        let undo = modelContext.undoManager
+        undo?.disableUndoRegistration()
+        snippet.copyCount += 1
+        snippet.lastCopiedAt = .now
+        try? modelContext.save()
+        undo?.enableUndoRegistration()
+
+        dismissQuickSearch()
+    }
+
+    private func revealQuickSearchSelection() {
+        guard let snippet = selectedQuickSearchSnippet else { return }
+        if let category = snippet.category {
+            selection = .category(category)
+        } else {
+            selection = .all
+        }
+        dismissQuickSearch()
     }
 
     // MARK: - Actions
@@ -726,6 +942,124 @@ struct ContentView: View {
         } catch {
             showAlert("Import failed", message: error.localizedDescription)
         }
+    }
+}
+
+/// Watches for ordinary typing while the main window is active. Text controls
+/// retain their normal behavior; this only starts search from otherwise
+/// unhandled typing in the window.
+private struct TypeToSearchMonitor: NSViewRepresentable {
+    let onType: (String) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onType: onType) }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        context.coordinator.view = view
+        context.coordinator.install()
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.onType = onType
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.uninstall()
+    }
+
+    final class Coordinator {
+        var onType: (String) -> Void
+        weak var view: NSView?
+        private var monitor: Any?
+
+        init(onType: @escaping (String) -> Void) {
+            self.onType = onType
+        }
+
+        func install() {
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, let view, event.window === view.window,
+                      view.window?.attachedSheet == nil else { return event }
+
+                // Never steal keystrokes from search, editors, or any other text field.
+                if view.window?.firstResponder is NSTextView ||
+                    view.window?.firstResponder is NSTextField {
+                    return event
+                }
+
+                let disallowed: NSEvent.ModifierFlags = [.command, .control, .option, .function]
+                guard event.modifierFlags.intersection(disallowed).isEmpty,
+                      let characters = event.characters,
+                      !characters.isEmpty,
+                      characters.unicodeScalars.allSatisfy({ $0.value >= 0x20 && $0.value != 0x7f })
+                else { return event }
+
+                DispatchQueue.main.async { self.onType(characters) }
+                return nil
+            }
+        }
+
+        func uninstall() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+
+        deinit { uninstall() }
+    }
+}
+
+/// Observes clicks throughout the window, consuming the first outside click so
+/// it dismisses quick search without activating the control underneath.
+private struct ClickOutsideSearchMonitor: NSViewRepresentable {
+    let onClickOutside: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onClickOutside: onClickOutside) }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        context.coordinator.view = view
+        context.coordinator.install()
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.onClickOutside = onClickOutside
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.uninstall()
+    }
+
+    final class Coordinator {
+        var onClickOutside: () -> Void
+        weak var view: NSView?
+        private var monitor: Any?
+
+        init(onClickOutside: @escaping () -> Void) {
+            self.onClickOutside = onClickOutside
+        }
+
+        func install() {
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+                [weak self] event in
+                guard let self, let view, event.window === view.window else { return event }
+                let pointInPanel = view.convert(event.locationInWindow, from: nil)
+                guard !view.bounds.contains(pointInPanel) else { return event }
+
+                DispatchQueue.main.async { self.onClickOutside() }
+                // Treat search like a modal layer: the first outside click
+                // dismisses it without activating the control underneath.
+                return nil
+            }
+        }
+
+        func uninstall() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+
+        deinit { uninstall() }
     }
 }
 

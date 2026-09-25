@@ -20,6 +20,12 @@ struct HelpView: View {
                     bullet("Drag a card to reorder it, drop it on a category to refile it, or drag it into another app as plain text.")
                 }
 
+                section("Quick Search", icon: "magnifyingglass", tint: .indigo) {
+                    bullet("Start typing anywhere in the Ditto window, or press ⌘F, to search every snippet across all categories.")
+                    bullet("Use ↑ and ↓ to choose a result. Press Return to copy it, or ⌘Return to show its category in the main list.")
+                    bullet("Title matches appear before matches found only in snippet contents.")
+                }
+
                 section("Categories", icon: "folder.fill", tint: .orange) {
                     bullet("Add a category with the folder+ button above the sidebar (⇧⌘N).")
                     bullet("Right-click a category to Edit, Duplicate, Copy Share Link, Export, or Delete it.")
@@ -53,6 +59,8 @@ struct HelpView: View {
                 section("Keyboard Shortcuts", icon: "keyboard.fill", tint: .pink) {
                     shortcut("⌘N", "New snippet")
                     shortcut("⇧⌘N", "New category")
+                    shortcut("⌘F", "Quick search")
+                    shortcut("⌘↩", "Show search result in list")
                     shortcut("⌘+ / ⌘–", "Zoom in / out")
                     shortcut("⇧⌘E", "Export library")
                     shortcut("⌘Z / ⇧⌘Z", "Undo / redo")

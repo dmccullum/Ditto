@@ -227,6 +227,30 @@ private typealias Category = Ditto.Category
         #expect(Snippet(title: "", content: "   ").displayTitle == "Untitled snippet")
     }
 
+    @Test func searchRanksTitleMatchesAheadOfContentMatches() {
+        let titleExact = Snippet(title: "Deploy", content: "unrelated", sortIndex: 3)
+        let titlePrefix = Snippet(title: "Deployment notes", content: "unrelated", sortIndex: 2)
+        let titleContains = Snippet(title: "Production deploy", content: "unrelated", sortIndex: 1)
+        let contentPrefix = Snippet(title: "Release", content: "Deploy this first", sortIndex: 0)
+        let contentContains = Snippet(title: "Checklist", content: "How to deploy safely", sortIndex: 4)
+
+        let results = SnippetSearch.results(
+            for: "deploy",
+            in: [contentContains, contentPrefix, titleContains, titlePrefix, titleExact]
+        )
+
+        #expect(results.map(\.title) == [
+            "Deploy", "Deployment notes", "Production deploy", "Release", "Checklist"
+        ])
+    }
+
+    @Test func searchIncludesContentAndIgnoresCase() {
+        let match = Snippet(title: "Greeting", content: "Hello WORLD")
+        let miss = Snippet(title: "Farewell", content: "Goodbye")
+
+        #expect(SnippetSearch.results(for: "world", in: [miss, match]).map(\.title) == ["Greeting"])
+    }
+
     @Test func newModelsGetStableUUIDs() {
         let a = Snippet(content: "one")
         let b = Snippet(content: "two")
