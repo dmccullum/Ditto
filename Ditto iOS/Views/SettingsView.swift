@@ -60,42 +60,28 @@ struct SettingsView: View {
                 }
 
                 if UIDevice.current.userInterfaceIdiom == .phone {
-                    Section {
-                        Picker(selection: $settings.categoryNavigation) {
-                            ForEach(CategoryNavigation.allCases) { option in
-                                Text(option.label).tag(option)
+                    Section("Layout") {
+                        Picker(selection: $settings.railSide) {
+                            ForEach(RailSide.allCases) { side in
+                                Text(side.label).tag(side)
                             }
                         } label: {
-                            Label("Categories", systemImage: settings.categoryNavigation.symbol)
+                            Label("Rail Side", systemImage: "hand.raised")
                         }
-                        if settings.categoryNavigation == .rail {
-                            Picker(selection: $settings.railSide) {
-                                ForEach(RailSide.allCases) { side in
-                                    Text(side.label).tag(side)
-                                }
-                            } label: {
-                                Label("Rail Side", systemImage: "hand.raised")
-                            }
-                        }
-                    } header: {
-                        Text("Layout")
-                    } footer: {
-                        Text("Chips sit across the top of the library. The side rail runs down the edge of the screen — slide your thumb along it to flip through categories. Put it on whichever side your thumb lives.")
                     }
                 }
 
                 Section {
-                    Picker(selection: $settings.linkCategoryBehavior) {
-                        ForEach(LinkCategoryBehavior.allCases) { option in
-                            Text(option.label).tag(option)
-                        }
-                    } label: {
-                        Label("Imported Snippets", systemImage: "link")
+                    Toggle(isOn: Binding(
+                        get: { settings.linkCategoryBehavior == .keep },
+                        set: { settings.linkCategoryBehavior = $0 ? .keep : .uncategorized }
+                    )) {
+                        Label("Keep Categories", systemImage: "link")
                     }
                 } header: {
                     Text("Shared Links")
                 } footer: {
-                    Text("When you open a ditto:// link, keep each snippet's original category or bring it in uncategorized.")
+                    Text("When you open a ditto:// link, keep each snippet's original category. Turn this off to bring them in uncategorized.")
                 }
 
                 Section("Tips") {

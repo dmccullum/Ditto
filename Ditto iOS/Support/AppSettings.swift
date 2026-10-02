@@ -13,13 +13,6 @@ enum LinkCategoryBehavior: String, CaseIterable, Identifiable {
     case uncategorized
 
     var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .keep:          return "Keep Category"
-        case .uncategorized: return "Uncategorized"
-        }
-    }
 }
 
 /// How the snippet list groups its rows.
@@ -35,28 +28,6 @@ enum SnippetGrouping: String, CaseIterable, Identifiable {
         case .none:      return "None"
         case .category:  return "Category"
         case .dateAdded: return "Date Added"
-        }
-    }
-}
-
-/// How the iPhone library switches between categories.
-enum CategoryNavigation: String, CaseIterable, Identifiable {
-    case chips
-    case rail
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .chips: return "Chips"
-        case .rail:  return "Side Rail"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .chips: return "capsule.on.capsule"
-        case .rail:  return "sidebar.squares.left"
         }
     }
 }
@@ -84,11 +55,6 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(linkCategoryBehavior.rawValue, forKey: "linkCategoryBehavior") }
     }
 
-    /// Chips across the top, or a scrubbable rail down the side.
-    var categoryNavigation: CategoryNavigation {
-        didSet { UserDefaults.standard.set(categoryNavigation.rawValue, forKey: "categoryNavigation") }
-    }
-
     /// Right for right thumbs; left for the left-handed.
     var railSide: RailSide {
         didSet { UserDefaults.standard.set(railSide.rawValue, forKey: "railSide") }
@@ -99,8 +65,6 @@ final class AppSettings {
             .flatMap(SnippetGrouping.init) ?? .none
         linkCategoryBehavior = UserDefaults.standard.string(forKey: "linkCategoryBehavior")
             .flatMap(LinkCategoryBehavior.init) ?? .keep
-        categoryNavigation = UserDefaults.standard.string(forKey: "categoryNavigation")
-            .flatMap(CategoryNavigation.init) ?? .rail
         railSide = UserDefaults.standard.string(forKey: "railSide")
             .flatMap(RailSide.init) ?? .right
     }

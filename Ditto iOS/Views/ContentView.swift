@@ -95,37 +95,21 @@ struct ContentView: View {
         }
     }
 
-    /// iPhone: one screen — a wordmark up top, the category chips pinned
-    /// beneath it, and the snippets.
+    /// iPhone: one screen — a wordmark up top, the snippets, and the category
+    /// rail down the thumb side.
     private var compactLibrary: some View {
         library
             .navigationTitle("Ditto")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(removing: .title)
-            .safeAreaBar(edge: .top) {
-                // Search spans every snippet, so the filters step aside.
-                if searchText.isEmpty && settings.categoryNavigation == .chips {
-                    CategoryChipBar(
-                        selection: $selection,
-                        categories: categories,
-                        allSnippets: allSnippets,
-                        onNewCategory: { isCreatingCategory = true },
-                        onEdit: { editingCategory = $0 },
-                        onDuplicate: duplicateCategory,
-                        onDelete: { deletingCategory = $0 },
-                        onManage: { isManagingCategories = true }
-                    )
-                }
-            }
             .overlay {
                 // Floats over the cards, stacked on the New Snippet button.
-                if !isSearchPresented && settings.categoryNavigation == .rail {
+                if !isSearchPresented {
                     CategoryRail(selection: $selection, categories: categories,
                                  allSnippets: allSnippets, side: settings.railSide)
                         .transition(.opacity)
                 }
             }
-            .animation(.snappy, value: settings.categoryNavigation)
             .animation(.snappy, value: isSearchPresented)
             .animation(.snappy, value: settings.railSide)
             .toolbar {
@@ -160,24 +144,6 @@ struct ContentView: View {
                     }
                 } label: {
                     Label("Group By", systemImage: "rectangle.grid.1x2")
-                }
-                .pickerStyle(.menu)
-            }
-            Picker(selection: navigationBinding) {
-                ForEach(CategoryNavigation.allCases) { option in
-                    Label(option.label, systemImage: option.symbol).tag(option)
-                }
-            } label: {
-                Label("Category Style", systemImage: settings.categoryNavigation.symbol)
-            }
-            .pickerStyle(.menu)
-            if settings.categoryNavigation == .rail {
-                Picker(selection: railSideBinding) {
-                    ForEach(RailSide.allCases) { side in
-                        Text(side.label).tag(side)
-                    }
-                } label: {
-                    Label("Rail Side", systemImage: "hand.raised")
                 }
                 .pickerStyle(.menu)
             }
@@ -338,14 +304,6 @@ struct ContentView: View {
         case .frequent: return "Frequent"
         case .category(let cat): return cat.name
         }
-    }
-
-    private var navigationBinding: Binding<CategoryNavigation> {
-        Binding(get: { settings.categoryNavigation }, set: { settings.categoryNavigation = $0 })
-    }
-
-    private var railSideBinding: Binding<RailSide> {
-        Binding(get: { settings.railSide }, set: { settings.railSide = $0 })
     }
 
     private var groupingBinding: Binding<SnippetGrouping> {
