@@ -16,8 +16,8 @@ enum LinkCategoryBehavior: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .keep:          return "Keep their category"
-        case .uncategorized: return "Import as uncategorized"
+        case .keep:          return "Keep Category"
+        case .uncategorized: return "Uncategorized"
         }
     }
 }
@@ -84,7 +84,7 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(linkCategoryBehavior.rawValue, forKey: "linkCategoryBehavior") }
     }
 
-    /// Chips across the top, or a scrubbable rail down the left edge.
+    /// Chips across the top, or a scrubbable rail down the side.
     var categoryNavigation: CategoryNavigation {
         didSet { UserDefaults.standard.set(categoryNavigation.rawValue, forKey: "categoryNavigation") }
     }
@@ -100,7 +100,7 @@ final class AppSettings {
         linkCategoryBehavior = UserDefaults.standard.string(forKey: "linkCategoryBehavior")
             .flatMap(LinkCategoryBehavior.init) ?? .keep
         categoryNavigation = UserDefaults.standard.string(forKey: "categoryNavigation")
-            .flatMap(CategoryNavigation.init) ?? .chips
+            .flatMap(CategoryNavigation.init) ?? .rail
         railSide = UserDefaults.standard.string(forKey: "railSide")
             .flatMap(RailSide.init) ?? .right
     }

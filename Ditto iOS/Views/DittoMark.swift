@@ -75,9 +75,11 @@ struct DittoGlyph: View {
 
     var body: some View {
         ZStack {
+            // The back half is faded so the solid lower-right half reads as
+            // the front one, matching the icon.
             DittoMarkHalf(spread: spread)
-            DittoMarkHalf(isSecond: true, spread: spread)
                 .opacity(0.6)
+            DittoMarkHalf(isSecond: true, spread: spread)
         }
         .accessibilityHidden(true)
     }

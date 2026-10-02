@@ -148,9 +148,6 @@ struct SettingsView: View {
                 .sensoryFeedback(.impact(flexibility: .soft), trigger: markSpread) { _, new in new == 1 }
             Text("Ditto")
                 .font(.system(.title, design: .rounded, weight: .bold))
-            Text("Your snippets, a tap away.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
             Text(statLine)
                 .font(.footnote.weight(.semibold))
                 .fontDesign(.rounded)
