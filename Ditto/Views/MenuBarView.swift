@@ -23,6 +23,8 @@ struct MenuBarView: View {
     /// to its content, and a bare ScrollView has no natural height, so without
     /// this the list collapses to nothing and the menu looks empty.
     @State private var listContentHeight: CGFloat = 0
+    @FocusState private var searchFocused: Bool
+    @State private var hostWindow: NSWindow?
     private let maxListHeight: CGFloat = 380
 
     var body: some View {
@@ -40,6 +42,14 @@ struct MenuBarView: View {
             footer
         }
         .frame(width: 320)
+        // The menu bar window is reused between openings, so onAppear alone
+        // only fires once; refocus every time it becomes key.
+        .background(HostWindowReader(window: $hostWindow))
+        .onAppear { focusSearch() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { note in
+            guard let window = note.object as? NSWindow, window === hostWindow else { return }
+            focusSearch()
+        }
     }
 
     // MARK: - Sections
@@ -50,6 +60,7 @@ struct MenuBarView: View {
                 .foregroundStyle(.secondary)
             TextField("Search snippets", text: $searchText)
                 .textFieldStyle(.plain)
+                .focused($searchFocused)
             if !searchText.isEmpty {
                 Button {
                     searchText = ""
@@ -229,6 +240,11 @@ struct MenuBarView: View {
 
     // MARK: - Actions
 
+    /// Put the cursor in search so typing starts filtering right away.
+    private func focusSearch() {
+        DispatchQueue.main.async { searchFocused = true }
+    }
+
     private func copy(_ snippet: Snippet) {
         Clipboard.copy(snippet.content)
         // Usage telemetry shouldn't land on the undo stack.
@@ -246,6 +262,24 @@ struct MenuBarView: View {
             withAnimation(.easeOut(duration: 0.25)) {
                 if justCopiedID == snippet.persistentModelID { justCopiedID = nil }
             }
+        }
+    }
+}
+
+/// Reports the NSWindow hosting a view, so the menu can tell when its own
+/// window becomes key.
+private struct HostWindowReader: NSViewRepresentable {
+    @Binding var window: NSWindow?
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { window = view.window }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        if nsView.window !== window {
+            DispatchQueue.main.async { window = nsView.window }
         }
     }
 }
