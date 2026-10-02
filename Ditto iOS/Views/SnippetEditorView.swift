@@ -66,9 +66,8 @@ struct SnippetEditorView: View {
                     .animation(.snappy, value: content.count)
                 }
 
-                Section("Category") {
+                Section {
                     categoryPicker
-                        .listRowInsets(EdgeInsets())
                 }
 
                 if isEditing {
@@ -111,41 +110,27 @@ struct SnippetEditorView: View {
         }
     }
 
-    /// Categories as the same colorful chips used to filter the library.
+    /// A pushed list rather than a row of chips: it stays readable however
+    /// many categories there are, and each row keeps its icon and color.
     private var categoryPicker: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal) {
-                HStack(spacing: 8) {
-                    categoryChoice(nil)
-                    ForEach(categories) { category in
-                        categoryChoice(category)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+        Picker(selection: $selectedCategory) {
+            categoryLabel(nil).tag(Category?.none)
+            ForEach(categories) { category in
+                categoryLabel(category).tag(Optional(category))
             }
-            .scrollIndicators(.hidden)
-            .onAppear {
-                if let id = selectedCategory?.persistentModelID {
-                    proxy.scrollTo(id, anchor: .center)
-                }
-            }
+        } label: {
+            Text("Category")
         }
+        .pickerStyle(.navigationLink)
     }
 
-    private func categoryChoice(_ category: Category?) -> some View {
-        let isSelected = selectedCategory?.persistentModelID == category?.persistentModelID
-        return Button {
-            selectedCategory = category
-        } label: {
-            CategoryChip(title: category?.name ?? "None",
-                         symbol: category?.symbolName ?? "tray",
-                         tint: category.map { SnippetColor.color(for: $0.colorName) } ?? .gray,
-                         isSelected: isSelected)
+    private func categoryLabel(_ category: Category?) -> some View {
+        Label {
+            Text(category?.name ?? "None")
+        } icon: {
+            Image(systemName: category?.symbolName ?? "tray")
+                .foregroundStyle(category.map { SnippetColor.color(for: $0.colorName) } ?? .gray)
         }
-        .buttonStyle(.plain)
-        .id(category?.persistentModelID)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func save() {

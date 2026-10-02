@@ -96,10 +96,22 @@ struct CategoryEditor: View {
     }
 
     private func loadInitialValues() {
-        guard let category else { return }
+        guard let category else {
+            colorName = freshColor
+            return
+        }
         name = category.name
         symbolName = category.symbolName
         colorName = category.colorName
+    }
+
+    /// New categories start on a color the library isn't using yet, so a
+    /// fresh category looks fresh instead of yet another blue.
+    private var freshColor: String {
+        let used = Set(allCategories.map(\.colorName))
+        let preferred: [SnippetColor] = [.blue, .orange, .green, .purple, .pink, .teal,
+                                         .indigo, .red, .mint, .gold, .cyan, .rose]
+        return (preferred.first { !used.contains($0.rawValue) } ?? .blue).rawValue
     }
 
     private func save() {

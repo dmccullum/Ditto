@@ -19,6 +19,11 @@ struct MenuBarView: View {
 
     @State private var searchText = ""
     @State private var justCopiedID: PersistentIdentifier?
+    /// Measured height of the list's content. A menu bar window sizes itself
+    /// to its content, and a bare ScrollView has no natural height, so without
+    /// this the list collapses to nothing and the menu looks empty.
+    @State private var listContentHeight: CGFloat = 0
+    private let maxListHeight: CGFloat = 380
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,7 +40,6 @@ struct MenuBarView: View {
             footer
         }
         .frame(width: 320)
-        .frame(maxHeight: 460)
     }
 
     // MARK: - Sections
@@ -60,7 +64,7 @@ struct MenuBarView: View {
 
     private var snippetList: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 2) {
                 ForEach(displayGroups, id: \.title) { group in
                     sectionHeader(group)
                     if isExpanded(group.title) {
@@ -75,7 +79,11 @@ struct MenuBarView: View {
                 }
             }
             .padding(.bottom, 6)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                listContentHeight = height
+            }
         }
+        .frame(height: min(max(listContentHeight, 44), maxListHeight))
     }
 
     private func sectionHeader(_ group: Group) -> some View {

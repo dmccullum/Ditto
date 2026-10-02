@@ -125,7 +125,7 @@ private struct RailControl: View {
             .glassEffect(.regular.interactive(), in: .circle)
             .contentShape(.circle)
             .accessibilityElement()
-            .accessibilityLabel("Category")
+            .accessibilityLabel("Category Switcher")
             .accessibilityValue(current?.title ?? "")
             .accessibilityHint("Swipe up or down to change category")
             .accessibilityAddTraits(.isButton)

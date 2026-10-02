@@ -6,14 +6,25 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
+    @Query private var snippets: [Snippet]
+    @Query private var categories: [Category]
     @State private var launchAtLogin = LoginItem.isEnabled
+
+    private var totalCopies: Int { snippets.reduce(0) { $0 + $1.copyCount } }
 
     var body: some View {
         @Bindable var settings = settings
         Form {
+            Section("Library") {
+                LabeledContent("Snippets", value: snippets.count.formatted())
+                LabeledContent("Categories", value: categories.count.formatted())
+                LabeledContent("Copies", value: totalCopies.formatted())
+            }
+
             Section("General") {
                 Toggle("Launch Ditto at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in
@@ -33,11 +44,12 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 260)
+        .frame(width: 460, height: 400)
     }
 }
 
 #Preview {
     SettingsView()
         .environment(AppSettings())
+        .modelContainer(for: [Snippet.self, Category.self], inMemory: true)
 }

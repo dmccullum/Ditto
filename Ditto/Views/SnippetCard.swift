@@ -3,7 +3,7 @@
 //  QuickCopy 2
 //
 //  A colorful, clickable card. Clicking it copies the snippet to the clipboard
-//  and briefly flips to a "Copied!" confirmation.
+//  and briefly floods with its color while the Ditto mark splits in two.
 //
 
 import SwiftUI
@@ -52,21 +52,21 @@ struct SnippetCard: View {
 
     var body: some View {
         Button(action: copy) {
-            ZStack(alignment: .topLeading) {
-                content
-                if didCopy { copiedOverlay }
-            }
-            .frame(maxWidth: .infinity, minHeight: cardMinHeight, alignment: .topLeading)
-            .padding(cardPadding)
-            .background(cardBackground)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(accent.opacity(isHovering ? 0.55 : 0.18), lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: accent.opacity(isHovering ? 0.25 : 0.08),
-                    radius: isHovering ? 10 : 4, y: isHovering ? 5 : 2)
-            .scaleEffect(isHovering ? 1.02 : 1.0)
+            content
+                .frame(maxWidth: .infinity, minHeight: cardMinHeight, alignment: .topLeading)
+                .padding(cardPadding)
+                .background(cardBackground)
+                .overlay {
+                    if didCopy { CopiedOverlay(accent: accent) }
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(accent.opacity(isHovering ? 0.55 : 0.18), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: accent.opacity(isHovering ? 0.25 : 0.08),
+                        radius: isHovering ? 10 : 4, y: isHovering ? 5 : 2)
+                .scaleEffect(isHovering ? 1.02 : 1.0)
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
@@ -180,17 +180,6 @@ struct SnippetCard: View {
         .background(.background)
     }
 
-    private var copiedOverlay: some View {
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(accent.opacity(0.92))
-            .overlay(
-                Label("Copied!", systemImage: "checkmark.circle.fill")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
-            )
-            .transition(.opacity.combined(with: .scale(scale: 0.95)))
-    }
-
     private func copy() {
         Clipboard.copy(snippet.content)
         // Usage telemetry shouldn't land on the undo stack.
@@ -242,6 +231,36 @@ struct SnippetCard: View {
     private func delete() {
         modelContext.delete(snippet)
         try? modelContext.save()
+    }
+}
+
+/// The copy confirmation, shared with iOS: the card floods with its color and
+/// the Ditto mark splits in two — one snippet, now also on your clipboard.
+private struct CopiedOverlay: View {
+    let accent: Color
+    @State private var spread: CGFloat = 0
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(accent.gradient)
+            .overlay {
+                HStack(spacing: 10) {
+                    DittoGlyph(spread: spread)
+                        .frame(width: 24, height: 24)
+                    Text("Copied")
+                        .font(.title3.weight(.bold))
+                        .fontDesign(.rounded)
+                }
+                .foregroundStyle(.white)
+            }
+            .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            .onAppear {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.6).delay(0.05)) {
+                    spread = 1
+                }
+            }
+            .accessibilityElement()
+            .accessibilityLabel("Copied")
     }
 }
 

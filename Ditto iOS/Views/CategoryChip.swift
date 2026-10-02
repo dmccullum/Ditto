@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// A tinted capsule: soft tint when idle, filled with the tint when selected.
-/// Used by the snippet and category editors.
+/// Used by the category editor's live preview.
 struct CategoryChip: View {
     let title: String
     let symbol: String

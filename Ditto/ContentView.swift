@@ -18,6 +18,14 @@ enum SidebarSelection: Hashable {
     case category(Category)
 }
 
+/// A brief confirmation shown at the top of the window.
+struct Banner: Identifiable, Equatable {
+    let id = UUID()
+    let message: String
+    let symbol: String
+    let tint: Color
+}
+
 /// A pending "new snippet from pasted text" request.
 struct PasteDraft: Identifiable {
     let id = UUID()
@@ -73,11 +81,15 @@ struct ContentView: View {
     @State private var dropTargetCategoryID: PersistentIdentifier?
     @State private var allRowIsDropTarget = false
 
+    @State private var categoryPendingDeletion: Category?
+    @State private var banner: Banner?
+
     var body: some View {
         NavigationSplitView {
             sidebar
         } detail: {
             detail
+                .overlay(alignment: .top) { bannerView }
                 .overlay(alignment: .top) {
                     if isQuickSearchPresented {
                         quickSearchPanel
@@ -104,6 +116,11 @@ struct ContentView: View {
         .sheet(isPresented: $isCreatingCategory) { CategoryEditor(category: nil) }
         .sheet(item: $pasteDraft) { draft in
             SnippetEditor(snippet: nil, defaultCategory: selectedCategory, defaultContent: draft.text)
+        }
+        .confirmDeletion(of: $categoryPendingDeletion, perform: deleteCategory)
+        .onOpenURL { url in
+            openLink(url)
+            NSApp.activate(ignoringOtherApps: true)
         }
         .onAppear { modelContext.undoManager = undoManager }
         .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }
@@ -241,8 +258,8 @@ struct ContentView: View {
             Button("Copy Share Link", systemImage: "link") { copyShareLink(for: category) }
             Button("Export…", systemImage: "square.and.arrow.up") { exportCategory(category) }
             Divider()
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                deleteCategory(category)
+            Button("Delete…", systemImage: "trash", role: .destructive) {
+                categoryPendingDeletion = category
             }
         }
     }
@@ -779,7 +796,50 @@ struct ContentView: View {
         dismissQuickSearch()
     }
 
+    @ViewBuilder
+    private var bannerView: some View {
+        if let banner {
+            Label(banner.message, systemImage: banner.symbol)
+                .font(.callout.weight(.semibold))
+                .fontDesign(.rounded)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(banner.tint)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 9)
+                .glassEffect(.regular, in: .capsule)
+                .padding(.top, 12)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .onTapGesture { withAnimation { self.banner = nil } }
+                .task(id: banner.id) {
+                    try? await Task.sleep(for: .seconds(2.5))
+                    withAnimation(.smooth) { self.banner = nil }
+                }
+        }
+    }
+
+    private func show(_ message: String, symbol: String, tint: Color) {
+        withAnimation(.bouncy) { banner = Banner(message: message, symbol: symbol, tint: tint) }
+    }
+
     // MARK: - Actions
+
+    /// Handle a ditto:// link, then say what it did — a link that silently
+    /// changes your library is a link you don't trust twice.
+    private func openLink(_ url: URL) {
+        let before = (try? modelContext.fetchCount(FetchDescriptor<Snippet>())) ?? 0
+        let handled = SnippetURL.handle(url, context: modelContext,
+                                        keepCategories: settings.linkCategoryBehavior == .keep)
+        let added = ((try? modelContext.fetchCount(FetchDescriptor<Snippet>())) ?? 0) - before
+        if !handled {
+            show("That link couldn't be read", symbol: "exclamationmark.triangle.fill", tint: .orange)
+        } else if added == 0 {
+            show("Already in your library", symbol: "checkmark.circle.fill", tint: .secondary)
+        } else {
+            selection = .all
+            show(added == 1 ? "Added 1 snippet" : "Added \(added) snippets",
+                 symbol: "checkmark.circle.fill", tint: .green)
+        }
+    }
 
     private func deleteCategory(_ category: Category) {
         if selectedCategory?.persistentModelID == category.persistentModelID {
@@ -1128,4 +1188,29 @@ struct UncategorizeDropDelegate: DropDelegate {
     ContentView()
         .environment(AppCommands())
         .modelContainer(for: [Snippet.self, Category.self], inMemory: true)
+}
+
+extension View {
+    /// Deleting a category cascades to its snippets, so it always asks first
+    /// and says exactly how much is about to go.
+    func confirmDeletion(of category: Binding<Category?>,
+                         perform: @escaping (Category) -> Void) -> some View {
+        let count = category.wrappedValue?.snippets.count ?? 0
+        return confirmationDialog(
+            "Delete “\(category.wrappedValue?.name ?? "")”?",
+            isPresented: Binding(get: { category.wrappedValue != nil },
+                                 set: { if !$0 { category.wrappedValue = nil } }),
+            presenting: category.wrappedValue
+        ) { target in
+            Button(count == 0 ? "Delete Category"
+                   : count == 1 ? "Delete Category and 1 Snippet"
+                   : "Delete Category and \(count) Snippets",
+                   role: .destructive) {
+                perform(target)
+            }
+        } message: { _ in
+            Text(count == 0 ? "You can undo this with ⌘Z."
+                 : "Its snippets are deleted too. You can undo this with ⌘Z.")
+        }
+    }
 }

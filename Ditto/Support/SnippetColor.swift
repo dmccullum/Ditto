@@ -29,9 +29,9 @@ enum SnippetColor: String, CaseIterable, Identifiable {
         case .green:    return .green
         case .forest:   return Color(red: 0.18, green: 0.54, blue: 0.34)
         case .mint:     return .mint
-        case .teal:     return .teal
+        case .teal:     return Color(red: 0.00, green: 0.52, blue: 0.56)
         case .cyan:     return .cyan
-        case .sky:      return Color(red: 0.33, green: 0.69, blue: 0.95)
+        case .sky:      return Color(red: 0.39, green: 0.58, blue: 0.93)
         case .blue:     return .blue
         case .navy:     return Color(red: 0.20, green: 0.32, blue: 0.62)
         case .indigo:   return .indigo

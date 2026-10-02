@@ -272,8 +272,8 @@ struct DittoShortcuts: AppShortcutsProvider {
 enum DittoSpotlight {
     /// Re-donate the whole library to Spotlight. Delete-then-index keeps
     /// removed snippets out, and a full pass is cheap at personal-library
-    /// scale. Runs at launch and after intent-driven creates; in-app edits
-    /// are picked up on the next launch.
+    /// scale. Runs at launch, after intent-driven creates, and whenever the
+    /// app loses focus, so in-app edits follow shortly after.
     @MainActor
     static func refresh() async {
         guard let snippets = try? DittoIntents.allSnippets() else { return }

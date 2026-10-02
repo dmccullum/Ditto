@@ -66,7 +66,7 @@ struct SettingsView: View {
                                 Text(side.label).tag(side)
                             }
                         } label: {
-                            Label("Rail Side", systemImage: "hand.raised")
+                            Label("Category Switcher", systemImage: "hand.raised")
                         }
                     }
                 }

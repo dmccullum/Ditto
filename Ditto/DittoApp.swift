@@ -32,10 +32,20 @@ struct DittoApp: App {
 
     init() {
         // Keep Spotlight and the Shortcuts snippet vocabulary in sync.
-        Task {
-            await DittoSpotlight.refresh()
-            DittoShortcuts.updateAppShortcutParameters()
+        Task { await Self.refreshSystemIndexes() }
+        // Ditto tends to stay open for days, so also re-index whenever it
+        // loses focus — in-app edits reach Spotlight and Shortcuts without
+        // waiting for the next launch.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
+        ) { _ in
+            Task { await Self.refreshSystemIndexes() }
         }
+    }
+
+    private static func refreshSystemIndexes() async {
+        await DittoSpotlight.refresh()
+        DittoShortcuts.updateAppShortcutParameters()
     }
 
     var body: some Scene {
@@ -45,11 +55,6 @@ struct DittoApp: App {
             ContentView()
                 .environment(commands)
                 .environment(settings)
-                .onOpenURL { url in
-                    SnippetURL.handle(url, context: container.mainContext,
-                                      keepCategories: settings.linkCategoryBehavior == .keep)
-                    NSApp.activate(ignoringOtherApps: true)
-                }
         }
         .modelContainer(container)
         .commands {
@@ -57,10 +62,13 @@ struct DittoApp: App {
         }
 
         // The always-available menu bar dropdown for quick copying.
-        MenuBarExtra("Ditto", systemImage: "doc.on.clipboard.fill") {
+        MenuBarExtra {
             MenuBarView()
                 .modelContainer(container)
                 .environment(settings)
+        } label: {
+            Image(nsImage: .dittoMenuBarGlyph)
+                .accessibilityLabel("Ditto")
         }
         .menuBarExtraStyle(.window)
 
@@ -68,6 +76,7 @@ struct DittoApp: App {
         Settings {
             SettingsView()
                 .environment(settings)
+                .modelContainer(container)
         }
 
         // In-app user guide (Help → Ditto Help). A single-instance window.

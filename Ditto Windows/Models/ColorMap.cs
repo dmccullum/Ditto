@@ -22,7 +22,7 @@ public static class ColorMap
         ["yellow"] = Hex("#FFCC00"),
         ["green"]  = Hex("#34C759"),
         ["mint"]   = Hex("#00C7BE"),
-        ["teal"]   = Hex("#30B0C7"),
+        ["teal"]   = Hex("#00858F"),
         ["cyan"]   = Hex("#32ADE6"),
         ["blue"]   = Hex("#007AFF"),
         ["indigo"] = Hex("#5856D6"),
