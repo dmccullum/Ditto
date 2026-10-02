@@ -1,106 +1,168 @@
 {
-  "fill" : {
-    "linear-gradient" : [
+  "fill": {
+    "linear-gradient": [
       "srgb:0.00193,0.38298,1.00000,1.00000",
       "srgb:0.29237,0.77215,0.77215,1.00000"
     ],
-    "orientation" : {
-      "start" : {
-        "x" : 0.5,
-        "y" : 0
+    "orientation": {
+      "start": {
+        "x": 0.5,
+        "y": 0
       },
-      "stop" : {
-        "x" : 0.5,
-        "y" : 0.7
+      "stop": {
+        "x": 0.5,
+        "y": 0.7
       }
     }
   },
-  "groups" : [
+  "groups": [
     {
-      "blur-material" : 0.25,
-      "layers" : [
+      "blur-material": 0.25,
+      "layers": [
         {
-          "fill" : {
-            "linear-gradient" : [
-              "srgb:0.70308,0.92620,1.00000,1.00000",
-              "srgb:0.93433,1.00000,0.97589,1.00000"
-            ],
-            "orientation" : {
-              "start" : {
-                "x" : 0.5,
-                "y" : 0
-              },
-              "stop" : {
-                "x" : 0.5,
-                "y" : 0.7
-              }
-            }
-          },
-          "glass" : true,
-          "image-name" : "Ditto layers copy-02.svg",
-          "name" : "Ditto layers copy-02",
-          "opacity" : 0.8,
-          "position-specializations" : [
+          "glass": true,
+          "image-name": "Ditto layers copy-02.svg",
+          "name": "Ditto layers copy-02",
+          "position-specializations": [
             {
-              "idiom" : "square",
-              "value" : {
-                "scale" : 1,
-                "translation-in-points" : [
+              "idiom": "square",
+              "value": {
+                "scale": 1,
+                "translation-in-points": [
                   0,
                   0
                 ]
               }
             }
+          ],
+          "fill-specializations": [
+            {
+              "value": {
+                "linear-gradient": [
+                  "srgb:0.70308,0.92620,1.00000,1.00000",
+                  "srgb:0.93433,1.00000,0.97589,1.00000"
+                ],
+                "orientation": {
+                  "start": {
+                    "x": 0.5,
+                    "y": 0
+                  },
+                  "stop": {
+                    "x": 0.5,
+                    "y": 0.7
+                  }
+                }
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "linear-gradient": [
+                  "srgb:0.18000,0.72000,1.00000,1.00000",
+                  "srgb:0.25000,1.00000,0.85000,1.00000"
+                ],
+                "orientation": {
+                  "start": {
+                    "x": 0.5,
+                    "y": 0
+                  },
+                  "stop": {
+                    "x": 0.5,
+                    "y": 0.7
+                  }
+                }
+              }
+            }
+          ],
+          "opacity-specializations": [
+            {
+              "value": 0.8
+            },
+            {
+              "appearance": "dark",
+              "value": 1.0
+            }
           ]
         }
       ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
       },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
       }
     },
     {
-      "layers" : [
+      "layers": [
         {
-          "fill" : {
-            "linear-gradient" : [
-              "srgb:0.69553,0.83734,1.00000,1.00000",
-              "srgb:0.50319,0.65017,1.00000,1.00000"
-            ],
-            "orientation" : {
-              "start" : {
-                "x" : 0.5,
-                "y" : 0
-              },
-              "stop" : {
-                "x" : 0.5,
-                "y" : 0.7
+          "image-name": "Ditto layers copy-01.svg",
+          "name": "Ditto layers copy-01",
+          "fill-specializations": [
+            {
+              "value": {
+                "linear-gradient": [
+                  "srgb:0.69553,0.83734,1.00000,1.00000",
+                  "srgb:0.50319,0.65017,1.00000,1.00000"
+                ],
+                "orientation": {
+                  "start": {
+                    "x": 0.5,
+                    "y": 0
+                  },
+                  "stop": {
+                    "x": 0.5,
+                    "y": 0.7
+                  }
+                }
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "linear-gradient": [
+                  "srgb:0.40000,0.62000,1.00000,1.00000",
+                  "srgb:0.10000,0.40000,1.00000,1.00000"
+                ],
+                "orientation": {
+                  "start": {
+                    "x": 0.5,
+                    "y": 0
+                  },
+                  "stop": {
+                    "x": 0.5,
+                    "y": 0.7
+                  }
+                }
               }
             }
-          },
-          "image-name" : "Ditto layers copy-01.svg",
-          "name" : "Ditto layers copy-01",
-          "opacity" : 0.8
+          ],
+          "opacity-specializations": [
+            {
+              "value": 0.8
+            },
+            {
+              "appearance": "dark",
+              "value": 1.0
+            }
+          ]
         }
       ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
       },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
       }
     }
   ],
-  "supported-platforms" : {
-    "circles" : [
+  "supported-platforms": {
+    "circles": [
       "watchOS"
     ],
-    "squares" : "shared"
+    "squares": "shared"
   }
 }
