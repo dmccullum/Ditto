@@ -141,7 +141,9 @@ struct SnippetListView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        // Plain, like the flat list: rows draw their own cards, so
+        // inset-grouped margins would only make them narrower.
+        .listStyle(.plain)
     }
 
     /// Reorder via long-press drag. Only the visible snippets trade places;
