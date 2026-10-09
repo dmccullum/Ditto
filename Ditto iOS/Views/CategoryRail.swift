@@ -150,11 +150,16 @@ private struct RailControl: View {
         .padding(.vertical, padding)
         .glassEffect(.regular, in: .capsule)
         .overlay(alignment: side == .right ? .topTrailing : .topLeading) {
-            if let hoverIndex, let touchY {
+            if let hoverIndex, touchY != nil {
+                // Ride alongside the highlighted icon where it's actually drawn
+                // (row center plus the Dock spread), not the raw finger. The
+                // zero-height frame centers the card on that line.
+                let center = rowCenter(index: hoverIndex, layout: layout)
+                let iconY = center + spread(center: center, pitch: layout.pitch)
                 NameCard(item: items[hoverIndex])
-                    .alignmentGuide(.top) { $0.height / 2 }
+                    .frame(height: 0)
                     .offset(x: side == .right ? -(button + 30) : button + 30,
-                            y: min(max(touchY, 24), layout.railHeight - 24))
+                            y: min(max(iconY, 24), layout.railHeight - 24))
                     .transition(.scale(scale: 0.85, anchor: side == .right ? .trailing : .leading)
                         .combined(with: .opacity))
             }
@@ -167,7 +172,7 @@ private struct RailControl: View {
         let item = items[index]
         let touching = touchY != nil
         let isActive = touching ? hoverIndex == index : item.id == selection
-        let center = padding + (CGFloat(row) + 0.5) * layout.pitch
+        let center = rowCenter(index: index, layout: layout)
         let swell = magnification(center: center, pitch: layout.pitch)
         let compressed = layout.pitch < iconPitch
         // In a compressed rail, show every Nth icon (plus whatever the
@@ -196,6 +201,12 @@ private struct RailControl: View {
         .offset(x: (side == .right ? -1 : 1) * (swell - 1) * 22,
                 y: spread(center: center, pitch: layout.pitch))
         .opacity(touching && !isActive ? 0.85 : 1)
+    }
+
+    /// Resting center of an item's row, measured from the top of the rail.
+    private func rowCenter(index: Int, layout: Layout) -> CGFloat {
+        let row = items.count - 1 - index
+        return padding + (CGFloat(row) + 0.5) * layout.pitch
     }
 
     /// Smooth cosine falloff around the finger. Reach is measured in points
