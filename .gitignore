@@ -3,3 +3,8 @@ build/
 DerivedData/
 xcuserdata/
 .DS_Store
+
+# .NET (Ditto Windows)
+bin/
+obj/
+.vs/
