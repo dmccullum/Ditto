@@ -276,6 +276,7 @@ enum DittoSpotlight {
     /// app loses focus, so in-app edits follow shortly after.
     @MainActor
     static func refresh() async {
+        guard !DittoStore.isDemo else { return }
         guard let snippets = try? DittoIntents.allSnippets() else { return }
         let index = CSSearchableIndex.default()
         try? await index.deleteAllSearchableItems()

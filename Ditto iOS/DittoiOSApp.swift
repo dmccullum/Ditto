@@ -34,6 +34,7 @@ struct DittoiOSApp: App {
     }
 
     private static func refreshSystemIndexes() async {
+        guard !DittoStore.isDemo else { return }
         await DittoSpotlight.refresh()
         DittoShortcuts.updateAppShortcutParameters()
     }

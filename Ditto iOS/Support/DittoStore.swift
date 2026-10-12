@@ -15,6 +15,9 @@ enum DittoStore {
     /// (e.g. free Personal Team without the CloudKit entitlement).
     static let container: ModelContainer = {
         let schema = Schema([Snippet.self, Category.self])
+        #if DEBUG
+        if DemoLibrary.isEnabled { return DemoLibrary.makeContainer(schema: schema) }
+        #endif
         let cloudConfig = ModelConfiguration(cloudKitDatabase: .automatic)
         let localConfig = ModelConfiguration()
         let container: ModelContainer
@@ -34,6 +37,16 @@ enum DittoStore {
         backfillUUIDs(container.mainContext)
         return container
     }()
+
+    /// True when running the in-memory demo library (`-DittoDemo`, Debug only).
+    /// Used to keep demo content out of Spotlight and Shortcuts.
+    static var isDemo: Bool {
+        #if DEBUG
+        DemoLibrary.isEnabled
+        #else
+        false
+        #endif
+    }
 
     /// Give every pre-existing row a stable UUID (new rows get one in init).
     /// App Intents and Spotlight use these to identify items across launches.

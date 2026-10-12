@@ -276,6 +276,7 @@ enum DittoSpotlight {
     /// are picked up on the next launch.
     @MainActor
     static func refresh() async {
+        guard !DittoStore.isDemo else { return }
         guard let snippets = try? DittoIntents.allSnippets() else { return }
         let index = CSSearchableIndex.default()
         try? await index.deleteAllSearchableItems()
