@@ -11,15 +11,11 @@ Ditto lives in two places:
 
 ## Building
 
-Requires Xcode with the macOS 26 and iOS 26 SDKs.
+Requires macOS 26 and Xcode 26.
 
-```bash
-open Ditto.xcodeproj
-```
+**Mac app, no Apple account needed:** double-click `Build Ditto.command` (or run it from a terminal). It builds an ad-hoc signed Release build, installs it to `/Applications`, and launches it.
 
-Choose the `Ditto` scheme for the Mac app or the iOS scheme for iPhone, then set your own signing team under *Signing & Capabilities* (the project currently references the author's team and bundle IDs, `com.danielmccullum.ditto*`, so you'll need to change those to run on a device).
-
-To build and install the Mac app to `/Applications` in one step, run `Build Ditto.command`.
+**In Xcode:** `open Ditto.xcodeproj`, pick the `Ditto` (Mac) or iOS scheme, and choose your own team under *Signing & Capabilities*. The simulator works without a team. To run the iOS app on a real device, also change the bundle ID (`com.danielmccullum.ditto.ios`) to one of your own.
 
 ## Import links
 
