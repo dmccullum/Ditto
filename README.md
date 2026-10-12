@@ -2,20 +2,20 @@
 
 <h1 align="center">Ditto</h1>
 
-Ditto is a colorful snippet manager for macOS and iOS, for the text you paste over and over: hashtags, links, bios, canned replies, templates. Organize snippets into color-coded categories, click one to copy it, and find anything instantly from the menu bar.
+Ditto keeps the text you paste all the time (hashtags, links, bios, email replies, templates) in one place on your Mac and iPhone. Sort snippets into color-coded categories, click one to copy it, and search from the menu bar.
 
 <p align="center"><img src="docs/images/screenshot.png" alt="Ditto on Mac and iPhone: color-coded snippet cards grouped by category" width="700"></p>
 
 ## What it does
 
-- **Click to copy** — snippets are cards; click one and it's on your clipboard.
-- **Categories** — give each category its own color and icon. Group the grid by category or date added, and collapse sections you don't need.
-- **Menu bar search** (Mac) — click the Ditto icon for instant search-and-copy from anywhere. Copy text elsewhere and paste it into Ditto to start a new snippet.
-- **Frequent and pinned** — the snippets you copy most rise to the top, and you can pin the ones you always want close.
-- **Share links** — copy a `ditto://` link for a snippet or a whole category. Anyone who opens it adds those snippets to their library. Re-opening a link is safe: Ditto merges by name and skips duplicates.
-- **Import and export** — back up or move your whole library as a JSON file.
-- **Shortcuts and Spotlight** — copy and create snippets with App Intents, and find snippets from Spotlight.
-- **Native on both platforms** — SwiftUI and SwiftData, with zoomable cards on Mac and a category rail on iPhone.
+- **Click to copy**: snippets are cards; click one and it's on your clipboard.
+- **Categories**: give each category its own color and icon. Group the grid by category or date added, and collapse sections you don't need.
+- **Menu bar search** (Mac): click the Ditto icon for instant search-and-copy from anywhere. Copy text elsewhere and paste it into Ditto to start a new snippet.
+- **Frequent and pinned**: the snippets you copy most rise to the top, and you can pin the ones you always want close.
+- **Share links**: copy a `ditto://` link for a snippet or a whole category. Anyone who opens it adds those snippets to their library. Re-opening a link is safe: Ditto merges by name and skips duplicates.
+- **Import and export**: back up or move your whole library as a JSON file.
+- **Shortcuts and Spotlight**: copy and create snippets with App Intents, and find snippets from Spotlight.
+- **Native on both platforms**: SwiftUI and SwiftData, with zoomable cards on Mac and a category rail on iPhone.
 
 ## Requirements
 
