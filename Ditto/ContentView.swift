@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  QuickCopy 2
+//  Ditto
 //
 //  The main management window: a category sidebar on the left, a grid of
 //  colorful snippet cards on the right.

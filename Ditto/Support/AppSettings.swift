@@ -1,6 +1,6 @@
 //
 //  AppSettings.swift
-//  QuickCopy 2 (Ditto)
+//  Ditto
 //
 //  User preferences plus small helpers for launch-at-login and pasting.
 //

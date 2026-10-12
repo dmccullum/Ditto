@@ -1,6 +1,6 @@
 //
 //  SnippetColor.swift
-//  QuickCopy 2
+//  Ditto
 //
 //  A small, friendly palette. We store the *name* (a String) in the model and
 //  resolve it to a real SwiftUI Color here, so the database stays simple.

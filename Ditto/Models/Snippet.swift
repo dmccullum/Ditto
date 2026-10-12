@@ -1,6 +1,6 @@
 //
 //  Snippet.swift
-//  QuickCopy 2
+//  Ditto
 //
 
 import SwiftData

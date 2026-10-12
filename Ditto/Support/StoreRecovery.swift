@@ -1,6 +1,6 @@
 //
 //  StoreRecovery.swift
-//  QuickCopy 2 (Ditto)
+//  Ditto
 //
 //  Last-resort recovery when the local SwiftData store can't be opened. We move
 //  the store files aside rather than deleting them, so the user's data is never

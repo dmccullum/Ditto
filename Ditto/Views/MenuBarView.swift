@@ -1,6 +1,6 @@
 //
 //  MenuBarView.swift
-//  QuickCopy 2
+//  Ditto
 //
 //  The dropdown that appears from the menu bar icon. Search, then click any
 //  snippet to copy it instantly. Built for speed.

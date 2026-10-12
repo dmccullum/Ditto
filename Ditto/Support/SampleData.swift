@@ -1,6 +1,6 @@
 //
 //  SampleData.swift
-//  QuickCopy 2
+//  Ditto
 //
 //  Seeds a few example categories + snippets the first time the app runs, so
 //  it doesn't open to an empty void.

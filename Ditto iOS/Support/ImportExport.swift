@@ -1,6 +1,6 @@
 //
 //  ImportExport.swift
-//  QuickCopy 2 (Ditto)
+//  Ditto
 //
 //  JSON bundle for backing up and sharing your snippet library.
 //

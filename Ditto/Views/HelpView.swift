@@ -1,6 +1,6 @@
 //
 //  HelpView.swift
-//  QuickCopy 2 (Ditto)
+//  Ditto
 //
 //  The in-app user guide, opened from Help → Ditto Help.
 //

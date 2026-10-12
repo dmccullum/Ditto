@@ -1,6 +1,6 @@
 //
 //  Clipboard.swift
-//  QuickCopy 2
+//  Ditto
 //
 //  Thin wrapper over the macOS pasteboard (the system clipboard).
 //

@@ -1,6 +1,6 @@
 //
 //  SnippetEditor.swift
-//  QuickCopy 2
+//  Ditto
 //
 //  Sheet for creating or editing a snippet. Handles both cases: pass an
 //  existing snippet to edit it, or nil to create a new one.

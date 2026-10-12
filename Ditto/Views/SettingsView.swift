@@ -1,6 +1,6 @@
 //
 //  SettingsView.swift
-//  QuickCopy 2 (Ditto)
+//  Ditto
 //
 //  The Settings (⌘,) window.
 //

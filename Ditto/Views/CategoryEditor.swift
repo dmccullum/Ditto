@@ -1,6 +1,6 @@
 //
 //  CategoryEditor.swift
-//  QuickCopy 2
+//  Ditto
 //
 //  Sheet for creating or editing a category: name, icon, and color.
 //

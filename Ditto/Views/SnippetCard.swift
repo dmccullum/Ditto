@@ -1,6 +1,6 @@
 //
 //  SnippetCard.swift
-//  QuickCopy 2
+//  Ditto
 //
 //  A colorful, clickable card. Clicking it copies the snippet to the clipboard
 //  and briefly floods with its color while the Ditto mark splits in two.

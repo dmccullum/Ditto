@@ -1,6 +1,6 @@
 //
 //  SnippetURL.swift
-//  QuickCopy 2 (Ditto)
+//  Ditto
 //
 //  Handles incoming `ditto://` links so snippets can be added just by opening
 //  a URL — e.g. a shareable link on a company intranet.
