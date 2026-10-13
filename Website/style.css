@@ -85,6 +85,19 @@ code { font: 500 .9em ui-monospace, "SF Mono", Menlo, monospace; background: rgb
 .card .mono { font: 500 14px/1.5 ui-monospace, "SF Mono", Menlo, monospace; }
 .card .chip { align-self: flex-start; margin-top: auto; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--a) 75%, white 25%); background: color-mix(in srgb, var(--a) 12%, transparent); }
 
+/* Demo cards stay at two rows: 1, 2 or 3 columns by width (260px minimum each), hiding cards past the second row. */
+.demo-wrap { container-type: inline-size; }
+.demo { grid-template-columns: 1fr; }
+.demo .card:nth-child(n+3) { display: none; }
+@container (min-width: 536px) {
+  .demo { grid-template-columns: repeat(2, 1fr); }
+  .demo .card:nth-child(n+3) { display: flex; }
+  .demo .card:nth-child(n+5) { display: none; }
+}
+@container (min-width: 812px) {
+  .demo { grid-template-columns: repeat(3, 1fr); }
+  .demo .card:nth-child(n+5) { display: flex; }
+}
 .demo .card { min-height: 168px; cursor: pointer; }
 .demo .card:hover, .demo .card:focus-visible { outline: none; border-color: color-mix(in srgb, var(--a) 55%, transparent); box-shadow: 0 10px 30px color-mix(in srgb, var(--a) 25%, transparent); transform: translateY(-2px); }
 .card .foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 6px; }
