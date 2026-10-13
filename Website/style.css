@@ -1,58 +1,172 @@
+/* Colors follow the app's dark appearance: a slate window with
+   category-tinted cards (SnippetCard.swift: 16pt radius, accent gradient
+   0.16 → 0.04, accent border at 0.18, brighter on hover). */
 :root {
-  --navy: #0b1030;
-  --blue: #1f6bff;
-  --teal: #38d0c9;
-  --ink: #101426;
-  --paper: #f4f6fb;
-  --muted: #5b6275;
-  --page-x: clamp(20px, 6vw, 96px);
+  --bg: #161a24;
+  --surface: #1e2230;
+  --line: rgba(255, 255, 255, .08);
+  --text: #f2f3f7;
+  --muted: #9aa1b4;
+  --faint: #6c7387;
+  --page-x: clamp(16px, 6vw, 96px);
+  --max: 1240px;
+
+  --pink: #ff375f;
+  --blue: #0a84ff;
+  --teal: #40c8e0;
+  --orange: #ff9f0a;
+  --purple: #bf5af2;
+  --indigo: #5e5ce6;
+  --red: #ff453a;
+  --green: #30d158;
 }
 
 * { box-sizing: border-box; }
-html { background: var(--paper); scroll-behavior: smooth; }
-body { margin: 0; color: var(--ink); background: var(--paper); font: 400 17px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+html { background: var(--bg); scroll-behavior: smooth; color-scheme: dark; }
+/* Tilted screens can poke past the screen edge; on iOS that widens the page and Safari zooms out. */
+body { overflow-x: clip; }
+body {
+  margin: 0; color: var(--text);
+  background:
+    radial-gradient(60rem 40rem at 85% -10%, rgba(10, 132, 255, .16), transparent 60%),
+    radial-gradient(50rem 36rem at -10% 20%, rgba(255, 55, 95, .10), transparent 60%),
+    var(--bg);
+  font: 400 17px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
 a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; height: auto; }
 h1, h2, h3, p { margin-top: 0; }
-code { font: 500 .9em ui-monospace, "SF Mono", Menlo, monospace; background: rgba(31, 107, 255, .1); padding: .1em .35em; border-radius: 5px; }
+svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+code { font: 500 .9em ui-monospace, "SF Mono", Menlo, monospace; background: rgba(255, 255, 255, .08); padding: .1em .35em; border-radius: 5px; }
 
-.bar { display: flex; align-items: center; justify-content: space-between; padding: 16px var(--page-x); background: var(--navy); color: #fff; font-weight: 500; }
+/* Header — the toolbar's glass capsules */
+.bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; padding: 14px var(--page-x); background: rgba(22, 26, 36, .72); backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6); border-bottom: 1px solid var(--line); }
 .mark { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
-.mark img { border-radius: 9px; }
-.bar > a:last-child { font-size: 15px; opacity: .85; }
-.bar > a:last-child:hover { opacity: 1; }
+.mark img { border-radius: 8px; }
+.glass { padding: 8px 16px; border-radius: 999px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); font-size: 15px; font-weight: 500; color: var(--muted); transition: color .15s, background .15s; }
+.glass:hover { color: var(--text); background: rgba(255, 255, 255, .1); }
 
-.hero { background: var(--navy); color: #fff; padding: clamp(48px, 8vw, 120px) var(--page-x) clamp(120px, 16vw, 240px); }
-.hero h1 { max-width: 14em; margin-bottom: 24px; font-size: clamp(40px, 7vw, 92px); font-weight: 750; line-height: 1; letter-spacing: -.035em; text-wrap: balance; }
-.hero h1 em { font-style: normal; color: var(--teal); }
-.hero p { max-width: 34em; color: #c8cfe8; font-size: clamp(17px, 1.6vw, 21px); }
-.hero .note { margin: 20px 0 0; font-size: 14px; color: #8e97bb; }
+/* Hero */
+.hero { max-width: var(--max); margin: 0 auto; padding: clamp(56px, 9vw, 128px) var(--page-x) clamp(48px, 6vw, 80px); }
+.hero h1 { max-width: 13em; margin-bottom: 22px; font-size: clamp(40px, 7vw, 84px); font-weight: 750; line-height: 1.02; letter-spacing: -.035em; text-wrap: balance; }
+.hero h1 span { background: linear-gradient(90deg, #0a84ff, #4ac4c4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lede { max-width: 33em; color: var(--muted); font-size: clamp(17px, 1.6vw, 21px); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 28px; }
+.note { font-size: 14px; color: var(--faint); }
 
-.button { display: inline-block; margin: 12px 0 0; padding: 14px 24px; border-radius: 999px; background: var(--teal); color: var(--navy); font-weight: 650; transition: background .15s; }
-.button:hover { background: #6fe0da; }
+.button { display: inline-block; padding: 13px 22px; border-radius: 999px; background: var(--blue); color: #fff; font-weight: 600; box-shadow: 0 8px 24px rgba(10, 132, 255, .35); transition: filter .15s, transform .15s; }
+.button:hover { filter: brightness(1.12); transform: translateY(-1px); }
 
-.shots { position: relative; margin: calc(-1 * clamp(80px, 12vw, 190px)) auto 0; padding: 0 var(--page-x); max-width: 1300px; }
-.shots .window { width: 82%; border-radius: 14px; box-shadow: 0 30px 70px rgba(11, 16, 48, .35); }
-.shots .phone { position: absolute; right: calc(var(--page-x) + 1%); bottom: -8%; width: 22%; filter: drop-shadow(0 24px 40px rgba(11, 16, 48, .4)); }
+.try { margin: clamp(56px, 7vw, 88px) 0 14px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
 
-.features { padding: clamp(80px, 10vw, 150px) var(--page-x) clamp(48px, 6vw, 90px); max-width: 1300px; margin: 0 auto; }
-.features h2 { margin-bottom: 40px; font-size: clamp(32px, 4.5vw, 56px); font-weight: 750; letter-spacing: -.03em; line-height: 1.05; }
-.features ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 32px 40px; }
-.features li { padding-top: 18px; border-top: 2px solid var(--ink); }
-.features h3 { margin-bottom: 6px; font-size: 19px; font-weight: 700; }
-.features p { margin: 0; color: var(--muted); font-size: 16px; }
+/* Snippet cards */
+.cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.card {
+  --a: var(--blue);
+  position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px;
+  padding: 16px 18px; border-radius: 16px; text-align: left; color: var(--text); font: inherit;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--a) 16%, transparent), color-mix(in srgb, var(--a) 4%, transparent)), var(--surface);
+  border: 1px solid color-mix(in srgb, var(--a) 18%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--a) 8%, transparent);
+  transition: border-color .2s, box-shadow .2s, transform .2s;
+}
+.card.pink { --a: var(--pink); }   .card.blue { --a: var(--blue); }
+.card.teal { --a: var(--teal); }   .card.orange { --a: var(--orange); }
+.card.purple { --a: var(--purple); } .card.indigo { --a: var(--indigo); }
+.card.red { --a: var(--red); }     .card.green { --a: var(--green); }
 
-.closing { margin-top: clamp(40px, 6vw, 80px); padding: clamp(64px, 8vw, 120px) var(--page-x); background: var(--blue); color: #fff; text-align: center; }
-.closing img { margin: 0 auto 24px; border-radius: 22px; }
-.closing h2 { margin-bottom: 10px; font-size: clamp(30px, 4vw, 52px); font-weight: 750; letter-spacing: -.03em; line-height: 1.1; }
-.closing h2 a { border-bottom: 2px solid rgba(255, 255, 255, .5); }
-.closing p { max-width: 32em; margin: 0 auto 12px; color: #dce6ff; }
-.closing .button { background: #fff; color: var(--navy); }
-.closing .button:hover { background: var(--paper); }
+.card .head { display: flex; align-items: center; gap: 8px; }
+.card .head svg { width: 16px; height: 16px; flex: none; color: var(--a); stroke-width: 2.4; }
+.card .head b { font-size: 17px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .head .pin { margin-left: auto; width: 13px; height: 13px; fill: var(--a); stroke: var(--a); stroke-width: 1.5; opacity: .7; transform: rotate(45deg); }
+.card .body, .card p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.card .body { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.card .mono { font: 500 14px/1.5 ui-monospace, "SF Mono", Menlo, monospace; }
+.card .chip { align-self: flex-start; margin-top: auto; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--a) 75%, white 25%); background: color-mix(in srgb, var(--a) 12%, transparent); }
 
-footer { display: flex; justify-content: space-between; padding: 22px var(--page-x); background: var(--navy); color: #8e97bb; font-size: 14px; }
+.demo .card { min-height: 168px; cursor: pointer; }
+.demo .card:hover, .demo .card:focus-visible { outline: none; border-color: color-mix(in srgb, var(--a) 55%, transparent); box-shadow: 0 10px 30px color-mix(in srgb, var(--a) 25%, transparent); transform: translateY(-2px); }
+.card .foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 6px; }
+.card .foot .chip { margin-top: 0; }
+.card .hint { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--a); opacity: 0; transition: opacity .2s; }
+.card .hint svg { width: 12px; height: 12px; }
+.demo .card:hover .hint, .demo .card:focus-visible .hint { opacity: .9; }
 
+/* "Copied" — the card floods with its color, as in the app */
+.copied { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: inherit; background: linear-gradient(180deg, color-mix(in srgb, var(--a) 85%, white 15%), var(--a)); color: #fff; font: 700 22px ui-rounded, "SF Pro Rounded", -apple-system, sans-serif; animation: flood .28s cubic-bezier(.3, 1.4, .5, 1); }
+.copied.out { opacity: 0; transition: opacity .25s ease-out; }
+.glyph { position: relative; width: 24px; height: 24px; }
+.glyph i { position: absolute; inset: 3px; border-radius: 6px; background: #fff; }
+.glyph i:first-child { opacity: .55; animation: split-a .45s .05s cubic-bezier(.3, 1.6, .5, 1) forwards; }
+.glyph i:last-child { animation: split-b .45s .05s cubic-bezier(.3, 1.6, .5, 1) forwards; }
+@keyframes flood { from { opacity: 0; transform: scale(.97); } }
+@keyframes split-a { to { transform: translate(-3px, -3px); } }
+@keyframes split-b { to { transform: translate(3px, 3px); } }
+
+/* Screenshots — ported from danielm.cc/apps (interior.module.css).
+   The set tilts toward the pointer, and the phone stands forward in depth. Padding cancelled by
+   negative margins gives the animated layer room to hold the shadows without clipping them. */
+.shots { max-width: var(--max); margin: 0 auto; padding: 0 var(--page-x); }
+.stage { margin: -4rem; padding: 4rem; perspective: 1800px; width: calc(100% + 8rem); }
+.screens { --ratio: 1.5167; --screens-height: min(80vh, 52rem); display: grid; margin: 0 auto; max-width: min(100%, calc(var(--ratio) * var(--screens-height))); transform: rotateY(calc(var(--px, 0) * 6deg)); transform-style: preserve-3d; transition: transform .7s cubic-bezier(.2, .8, .2, 1); width: 100%; }
+.screen { align-self: start; container-type: inline-size; grid-area: 1 / 1; justify-self: start; min-width: 0; position: relative; transform-style: preserve-3d; }
+/* Forward offset on `translate`, which applies after `rotate`, so the phone turns about its own center. */
+.screen.front { justify-self: end; translate: 0 0 5rem; }
+/* z-index keeps the shot above its edge layers wherever the browser flattens the 3D instead of sorting by depth. */
+.screen img { filter: drop-shadow(0 0 1px rgba(0, 0, 0, .4)); position: relative; transform: translateZ(0); width: 100%; z-index: 1; }
+/* Thickness: silhouette layers stepped back in depth behind each shot. The window is a dark metal slab
+   about 2% of its width deep; the phone is about a real phone's depth and follows the frame's outline. */
+.edge { --step: .285cqw; inset: 0; position: absolute; transform: translateZ(calc(var(--i) * var(--step) * -1)); }
+.edge::before { background: url(metal-grain.png) calc(var(--i) * 37px) calc(var(--i) * 53px) / 128px, linear-gradient(#2e2e31, #0d0d0e); border-radius: 3.6cqw; content: ""; inset: 0; position: absolute; }
+.phone .edge { --step: 2.2cqw; }
+.phone .edge::before { background: linear-gradient(#3a3a3d, #0b0b0c); border-radius: 0; mask: url(iphone-silhouette.png) 0 0 / 100% 100%; -webkit-mask: url(iphone-silhouette.png) 0 0 / 100% 100%; }
+/* The shadow falls from the back layer: one broad, soft shadow, heaviest below. */
+.edge:last-child::after { border-radius: 3.6cqw; box-shadow: 0 1.1rem 3.5rem rgba(0, 0, 0, .6); content: ""; inset: 0; position: absolute; }
+.phone .edge:last-child::after { border-radius: 20% / 9.6%; inset: .5% 1.8%; }
+/* Touch: the window drops its slab (each layer is a full-size texture, too heavy to re-render on pinch-zoom) but keeps its shadow. */
+@media (hover: none) {
+  .screen:not(.phone) .edge:not(:last-child), .screen:not(.phone) .edge::before { display: none; }
+}
+
+/* Scroll depth: the phone turns as it scrolls past and runs ahead of the window, and the headline lifts away. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hero { view-timeline: --hero block; }
+    .stage { view-timeline: --stage block; }
+    .phone { animation: phoneSway linear both; animation-range: cover 0% cover 100%; animation-timeline: --stage; }
+  }
+  @media (prefers-reduced-motion: no-preference) and (min-width: 801px) {
+    .hero > h1 { animation: heroLift linear both; animation-range: exit 0% exit 100%; animation-timeline: --hero; }
+    .screen.front { animation: phoneSway linear both, frontLift linear both; animation-range: cover 0% cover 100%, normal; animation-timeline: --stage, view(); }
+  }
+}
+@keyframes phoneSway { from { rotate: 0 1 0 -28deg; } to { rotate: 0 1 0 12deg; } }
+@keyframes frontLift { from { translate: 0 3rem 5rem; } to { translate: 0 -3rem 5rem; } }
+@keyframes heroLift { from { translate: 0 0; } to { translate: 0 -5rem; } }
+
+/* Features — a category section */
+.features { max-width: var(--max); margin: 0 auto; padding: clamp(96px, 12vw, 170px) var(--page-x) clamp(48px, 6vw, 90px); }
+.group { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; font-size: clamp(24px, 3vw, 32px); font-weight: 700; letter-spacing: -.02em; }
+.group .chev { width: 20px; height: 20px; color: var(--faint); }
+.group .sym { width: 26px; height: 26px; color: var(--orange); }
+.group span { color: var(--faint); font-weight: 500; }
+.features .card { min-height: 150px; }
+
+/* Closing */
+.closing { max-width: var(--max); margin: clamp(32px, 5vw, 64px) auto clamp(48px, 6vw, 80px); padding: clamp(56px, 7vw, 96px) var(--page-x); text-align: center; border-radius: 28px; background: linear-gradient(160deg, rgba(10, 132, 255, .22), rgba(74, 196, 196, .08)), var(--surface); border: 1px solid rgba(10, 132, 255, .25); }
+.closing img { margin: 0 auto 22px; border-radius: 20px; filter: drop-shadow(0 12px 28px rgba(10, 132, 255, .35)); }
+.closing h2 { margin-bottom: 10px; font-size: clamp(28px, 4vw, 44px); font-weight: 750; letter-spacing: -.03em; line-height: 1.1; }
+.closing h2 a { border-bottom: 2px solid rgba(255, 255, 255, .35); }
+.closing p { max-width: 32em; margin: 0 auto 22px; color: var(--muted); }
+
+footer { display: flex; justify-content: space-between; max-width: var(--max); margin: 0 auto; padding: 22px var(--page-x) 32px; border-top: 1px solid var(--line); color: var(--faint); font-size: 14px; }
+footer a:hover { color: var(--text); }
+
+@media (max-width: 1240px) { .closing { margin-left: var(--page-x); margin-right: var(--page-x); } }
 @media (max-width: 720px) {
-  .shots .window { width: 100%; }
-  .shots .phone { position: static; width: 44%; margin: -18% 0 0 auto; }
+  .features { padding-top: 72px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#161a24">
   <title>Ditto — Your snippets, one click away</title>
   <meta name="description" content="Ditto keeps the text you paste all the time (hashtags, links, bios, replies, templates) in one place on your Mac and iPhone.">
   <meta property="og:title" content="Ditto — Your snippets, one click away">
@@ -13,40 +15,97 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-hash" viewBox="0 0 24 24"><path d="M9 3 7 21M17 3l-2 18M4 8.5h17M3 15.5h17"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4l-1.4 1.4M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.4-1.4"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7ZM19 15.5c.3 1.8 1.1 2.6 2.5 2.9-1.4.3-2.2 1.1-2.5 2.9-.3-1.8-1.1-2.6-2.5-2.9 1.4-.3 2.2-1.1 2.5-2.9Z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7 9 3 3-3 3M12.5 15H17"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 21c-4 0-6.5-2.7-6.5-6.2 0-3.6 2.7-5.6 3.6-9.3 2.4 1.4 3.4 3.5 3.4 5.5 1-.6 1.7-1.7 1.9-3 2.1 1.7 3.1 4.2 3.1 6.6 0 3.6-2.5 6.4-5.5 6.4Z"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></symbol>
+    <symbol id="i-tray" viewBox="0 0 24 24"><path d="M4 13 6.5 5h11L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2ZM4 13h4.5l1 2h5l1-2H20"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6Z"/></symbol>
+    <symbol id="i-devices" viewBox="0 0 24 24"><rect x="2.5" y="4" width="14" height="10" rx="1.5"/><path d="M6 18h7"/><rect x="16" y="9" width="6" height="11" rx="1.5"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 3h6l-1 6 3.5 3.5v1.5h-11v-1.5L10 9ZM12 14v7"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  </svg>
+
   <header class="bar">
-    <a class="mark" href="#top"><img src="icon.png" alt="" width="36" height="36"> Ditto</a>
-    <a href="https://github.com/dmccullum/Ditto">GitHub ↗</a>
+    <a class="mark" href="#top"><img src="icon.png" alt="" width="34" height="34"> Ditto</a>
+    <a class="glass" href="https://github.com/dmccullum/Ditto">GitHub ↗</a>
   </header>
 
   <main id="top">
     <section class="hero">
-      <h1>The text you paste all the time, <em>one click away.</em></h1>
-      <p>Ditto keeps hashtags, links, bios, email replies, and templates in one place on your Mac and iPhone. Click a snippet to copy it.</p>
-      <a class="button" href="https://github.com/dmccullum/Ditto#build-from-source">Build it from source ↗</a>
-      <p class="note">Mac and iPhone · macOS 26 and iOS 26 · Free and open source</p>
+      <h1>The text you paste all the time, <span>one click away.</span></h1>
+      <p class="lede">Ditto keeps hashtags, links, bios, email replies, and templates in one place on your Mac and iPhone. Click a snippet to copy it.</p>
+      <div class="actions">
+        <a class="button" href="https://github.com/dmccullum/Ditto#build-from-source">Build it from source ↗</a>
+        <span class="note">macOS 26 and iOS 26 · Free and open source</span>
+      </div>
+
+      <p class="try">Try it — click a card.</p>
+      <div class="cards demo">
+        <button class="card pink" data-copy="#contentcreator #socialmedia #marketing #digitalmarketing #branding">
+          <span class="head"><svg><use href="#i-hash"/></svg><b>Daily content</b><svg class="pin"><use href="#i-pin"/></svg></span>
+          <span class="body">#contentcreator #socialmedia #marketing #digitalmarketing #branding</span>
+          <span class="foot"><span class="chip"></span><span class="hint"><svg><use href="#i-copy"/></svg>Click to copy</span></span>
+        </button>
+        <button class="card blue" data-copy="https://danielm.cc/">
+          <span class="head"><svg><use href="#i-link"/></svg><b>Link in bio</b><svg class="pin"><use href="#i-pin"/></svg></span>
+          <span class="body">https://danielm.cc/</span>
+          <span class="foot"><span class="chip"></span><span class="hint"><svg><use href="#i-copy"/></svg>Click to copy</span></span>
+        </button>
+        <button class="card teal" data-copy="Hi! Your invoice is attached. Payment is due within 14 days — let me know if you have any questions. Thanks again for a great project!">
+          <span class="head"><svg><use href="#i-mail"/></svg><b>Invoice sent</b></span>
+          <span class="body">Hi! Your invoice is attached. Payment is due within 14 days — let me know if you have any questions. Thanks again for a great project!</span>
+          <span class="foot"><span class="chip"></span><span class="hint"><svg><use href="#i-copy"/></svg>Click to copy</span></span>
+        </button>
+        <button class="card indigo" data-copy="git reset --soft HEAD~1">
+          <span class="head"><svg><use href="#i-terminal"/></svg><b>Undo last commit</b></span>
+          <span class="body mono">git reset --soft HEAD~1</span>
+          <span class="foot"><span class="chip"></span><span class="hint"><svg><use href="#i-copy"/></svg>Click to copy</span></span>
+        </button>
+      </div>
     </section>
 
+    <!-- Ported from danielm.cc/apps: the set turns toward the pointer, the phone stands forward in
+         depth, and stacked silhouette layers behind each shot give it thickness when it turns.
+         Sizes: window 84% of the set; phone at 80% of the window's height, dropped 35% of it. -->
     <section class="shots" aria-label="Screenshots">
-      <img class="window" src="ditto-window.webp" width="2000" height="1365" alt="Ditto on the Mac: hashtag and link snippets as colored cards, grouped by category">
-      <img class="phone" src="ditto-phone.webp" width="978" height="2000" alt="Ditto on iPhone: hashtag snippets with the category rail open">
+      <div class="stage" data-pointer>
+        <figure class="screens">
+          <div class="screen" style="width: 84%">
+            <img src="ditto-window.webp" width="2000" height="1365" alt="Ditto on the Mac: hashtag and link snippets as colored cards, grouped by category">
+            <span class="edge" style="--i: 1"></span><span class="edge" style="--i: 2"></span><span class="edge" style="--i: 3"></span><span class="edge" style="--i: 4"></span><span class="edge" style="--i: 5"></span><span class="edge" style="--i: 6"></span><span class="edge" style="--i: 7"></span>
+          </div>
+          <div class="screen front phone" style="width: 22.43%; margin-top: 20.07%">
+            <img src="ditto-phone.webp" width="978" height="2000" alt="Ditto on iPhone: hashtag snippets with the category rail open">
+            <span class="edge" style="--i: 1"></span><span class="edge" style="--i: 2"></span><span class="edge" style="--i: 3"></span><span class="edge" style="--i: 4"></span><span class="edge" style="--i: 5"></span>
+          </div>
+        </figure>
+      </div>
     </section>
 
     <section class="features">
-      <h2>What it does</h2>
-      <ul>
-        <li><h3>Click to copy</h3><p>Snippets are cards. Click one and it’s on your clipboard.</p></li>
-        <li><h3>Categories</h3><p>Give each category its own color and icon, group by category or date, and collapse what you don’t need.</p></li>
-        <li><h3>Menu bar search</h3><p>Search and copy from anywhere on the Mac. Paste copied text into Ditto to start a new snippet.</p></li>
-        <li><h3>Frequent and pinned</h3><p>The snippets you copy most rise to the top, and you can pin the ones you always want close.</p></li>
-        <li><h3>Share links</h3><p>Copy a <code>ditto://</code> link for a snippet or a whole category. Opening one adds it to a library, merging by name and skipping duplicates.</p></li>
-        <li><h3>Import and export</h3><p>Back up or move your whole library as a JSON file.</p></li>
-        <li><h3>Shortcuts and Spotlight</h3><p>Copy and create snippets with App Intents, and find them from Spotlight.</p></li>
-        <li><h3>Native on both</h3><p>SwiftUI and SwiftData, with zoomable cards on the Mac and a category rail on iPhone.</p></li>
+      <h2 class="group"><svg class="chev"><use href="#i-chevron"/></svg><svg class="sym"><use href="#i-sparkle"/></svg>What it does <span>8</span></h2>
+      <ul class="cards">
+        <li class="card blue"><span class="head"><svg><use href="#i-copy"/></svg><b>Click to copy</b></span><p>Snippets are cards. Click one and it’s on your clipboard.</p></li>
+        <li class="card orange"><span class="head"><svg><use href="#i-folder"/></svg><b>Categories</b></span><p>Give each category its own color and icon, group by category or date, and collapse what you don’t need.</p><span class="chip">⌘⇧N</span></li>
+        <li class="card purple"><span class="head"><svg><use href="#i-search"/></svg><b>Menu bar search</b></span><p>Search and copy from anywhere on the Mac. Paste copied text into Ditto to start a new snippet.</p></li>
+        <li class="card red"><span class="head"><svg><use href="#i-flame"/></svg><b>Frequent and pinned</b></span><p>The snippets you copy most rise to the top, and you can pin the ones you always want close.</p></li>
+        <li class="card teal"><span class="head"><svg><use href="#i-share"/></svg><b>Share links</b></span><p>Copy a <code>ditto://</code> link for a snippet or a whole category. Opening one adds it to a library, merging by name and skipping duplicates.</p></li>
+        <li class="card green"><span class="head"><svg><use href="#i-tray"/></svg><b>Import and export</b></span><p>Back up or move your whole library as a JSON file.</p></li>
+        <li class="card indigo"><span class="head"><svg><use href="#i-bolt"/></svg><b>Shortcuts and Spotlight</b></span><p>Copy and create snippets with App Intents, and find them from Spotlight.</p></li>
+        <li class="card pink"><span class="head"><svg><use href="#i-devices"/></svg><b>Native on both</b></span><p>SwiftUI and SwiftData, with zoomable cards on the Mac and a category rail on iPhone.</p><span class="chip">⌘+ ⌘–</span></li>
       </ul>
     </section>
 
     <section class="closing">
-      <img src="icon.png" alt="Ditto app icon" width="96" height="96">
+      <img src="icon.png" alt="Ditto app icon" width="88" height="88">
       <h2>Made by <a href="https://danielm.cc">Daniel McCullum</a></h2>
       <p>Ditto ships as source for now. Clone it, build it in Xcode, or double-click <b>Build Ditto.command</b>.</p>
       <a class="button" href="https://github.com/dmccullum/Ditto">View on GitHub ↗</a>
@@ -54,5 +113,39 @@
   </main>
 
   <footer><span>Ditto · 2026</span><a href="#top">Back to top ↑</a></footer>
+
+  <script>
+    // Writes the pointer's horizontal position over each [data-pointer] element to --px (-1 to 1),
+    // easing back to rest when it leaves. Mouse and trackpad only, and off for reduced motion.
+    if (matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches) {
+      document.querySelectorAll('[data-pointer]').forEach(el => {
+        let frame = 0;
+        const set = x => {
+          cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(() => el.style.setProperty('--px', x.toFixed(3)));
+        };
+        el.addEventListener('pointermove', e => {
+          const r = el.getBoundingClientRect();
+          set(Math.max(-1, Math.min(1, (e.clientX - r.left) / r.width * 2 - 1)));
+        });
+        el.addEventListener('pointerleave', () => set(0));
+      });
+    }
+
+    document.querySelectorAll('.demo .card').forEach(card => {
+      const text = card.dataset.copy;
+      card.querySelector('.chip').textContent = text.length + ' chars';
+      card.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(text); } catch (e) {}
+        card.querySelector('.copied')?.remove();
+        const flood = document.createElement('span');
+        flood.className = 'copied';
+        flood.innerHTML = '<span class="glyph"><i></i><i></i></span>Copied';
+        card.append(flood);
+        setTimeout(() => flood.classList.add('out'), 900);
+        setTimeout(() => flood.remove(), 1150);
+      });
+    });
+  </script>
 </body>
 </html>
