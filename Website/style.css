@@ -24,7 +24,7 @@
 * { box-sizing: border-box; }
 html { background: var(--bg); scroll-behavior: smooth; color-scheme: dark; }
 /* Tilted screens can poke past the screen edge; on iOS that widens the page and Safari zooms out. */
-body { overflow-x: clip; }
+html, body { overflow-x: clip; max-width: 100%; }
 body {
   margin: 0; color: var(--text);
   background:
