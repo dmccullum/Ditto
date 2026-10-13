@@ -154,7 +154,7 @@ code { font: 500 .9em ui-monospace, "SF Mono", Menlo, monospace; background: rgb
     .screen.front { animation: phoneSway linear both, frontLift linear both; animation-range: cover 0% cover 100%, normal; animation-timeline: --stage, view(); }
   }
 }
-@keyframes phoneSway { from { rotate: 0 1 0 -28deg; } to { rotate: 0 1 0 12deg; } }
+@keyframes phoneSway { from { rotate: 0 1 0 -60deg; } to { rotate: 0 1 0 28deg; } }
 @keyframes frontLift { from { translate: 0 3rem 5rem; } to { translate: 0 -3rem 5rem; } }
 @keyframes heroLift { from { translate: 0 0; } to { translate: 0 -5rem; } }
 
