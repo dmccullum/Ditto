@@ -133,7 +133,7 @@ code { font: 500 .9em ui-monospace, "SF Mono", Menlo, monospace; background: rgb
 .edge { --step: .285cqw; inset: 0; position: absolute; transform: translateZ(calc(var(--i) * var(--step) * -1)); }
 .edge::before { background: url(metal-grain.png) calc(var(--i) * 37px) calc(var(--i) * 53px) / 128px, linear-gradient(#2e2e31, #0d0d0e); border-radius: 3.6cqw; content: ""; inset: 0; position: absolute; }
 .phone .edge { --step: 2.2cqw; }
-.phone .edge::before { background: linear-gradient(#3a3a3d, #0b0b0c); border-radius: 0; mask: url(iphone-silhouette.png) 0 0 / 100% 100%; -webkit-mask: url(iphone-silhouette.png) 0 0 / 100% 100%; }
+.phone .edge::before { background: linear-gradient(#1a1a1c, #050505); border-radius: 0; mask: url(iphone-silhouette.png) 0 0 / 100% 100%; -webkit-mask: url(iphone-silhouette.png) 0 0 / 100% 100%; }
 /* The shadow falls from the back layer: one broad, soft shadow, heaviest below. */
 .edge:last-child::after { border-radius: 3.6cqw; box-shadow: 0 1.1rem 3.5rem rgba(0, 0, 0, .6); content: ""; inset: 0; position: absolute; }
 .phone .edge:last-child::after { border-radius: 20% / 9.6%; inset: .5% 1.8%; }
