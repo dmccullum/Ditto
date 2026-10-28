@@ -189,21 +189,17 @@ struct ContentView: View {
         .onChange(of: appCommands.createCategory, initial: true) { _, create in
             if create { isCreatingCategory = true; appCommands.createCategory = false }
         }
-        .onChange(of: appCommands.exportLibrary) { _, export in
-            if export { appCommands.exportLibrary = false; exportLibrary() }
-        }
-        .onChange(of: appCommands.importLibrary) { _, imp in
-            if imp { appCommands.importLibrary = false; isImporting = true }
-        }
-        .onChange(of: appCommands.zoomIn) { _, v in
-            if v { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1); appCommands.zoomIn = false }
-        }
-        .onChange(of: appCommands.zoomOut) { _, v in
-            if v { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1); appCommands.zoomOut = false }
-        }
-        .onChange(of: appCommands.resetZoom) { _, v in
-            if v { sizeLevel = 2; appCommands.resetZoom = false }
-        }
+        .focusedSceneValue(\.libraryActions, LibraryActions(
+            export: exportLibrary,
+            import: { isImporting = true }
+        ))
+        .focusedSceneValue(\.zoomActions, ZoomActions(
+            canZoomIn: sizeLevel < Self.maxSizeLevel,
+            canZoomOut: sizeLevel > Self.minSizeLevel,
+            zoomIn: { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1) },
+            zoomOut: { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) },
+            reset: { sizeLevel = 2 }
+        ))
         .onChange(of: draggedSnippetIDs) { old, new in
             // Snapshot the current order only when a drag begins. The rest of
             // the time the grid renders straight from the query, so ordinary

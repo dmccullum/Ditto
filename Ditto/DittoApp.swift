@@ -15,11 +15,27 @@ import AppIntents
 final class AppCommands {
     var createSnippet = false
     var createCategory = false
-    var exportLibrary = false
-    var importLibrary = false
-    var zoomIn = false
-    var zoomOut = false
-    var resetZoom = false
+}
+
+/// Export / Import, published by the main window while it's focused. The
+/// File menu items are disabled when it's closed or another window is key.
+struct LibraryActions {
+    var export: () -> Void
+    var `import`: () -> Void
+}
+
+/// Card size controls, published by the main window while it's focused.
+struct ZoomActions {
+    var canZoomIn: Bool
+    var canZoomOut: Bool
+    var zoomIn: () -> Void
+    var zoomOut: () -> Void
+    var reset: () -> Void
+}
+
+extension FocusedValues {
+    @Entry var libraryActions: LibraryActions?
+    @Entry var zoomActions: ZoomActions?
 }
 
 @main
@@ -93,6 +109,8 @@ struct DittoApp: App {
 /// lets us reopen the main window even after it's been closed.
 struct DittoCommands: Commands {
     @Environment(\.openWindow) private var openWindow
+    @FocusedValue(\.libraryActions) private var libraryActions
+    @FocusedValue(\.zoomActions) private var zoomActions
     var commands: AppCommands
     @Bindable var settings: AppSettings
 
@@ -116,19 +134,24 @@ struct DittoCommands: Commands {
         // Export / Import under the File menu.
         CommandGroup(after: .newItem) {
             Divider()
-            Button("Export Library…") { commands.exportLibrary = true }
+            Button("Export Library…") { libraryActions?.export() }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
-            Button("Import Library…") { commands.importLibrary = true }
+                .disabled(libraryActions == nil)
+            Button("Import Library…") { libraryActions?.import() }
+                .disabled(libraryActions == nil)
         }
 
         // Card size + grouping controls, added to the system View menu (rather
         // than a second "View" menu).
         CommandGroup(after: .sidebar) {
-            Button("Default Size") { commands.resetZoom = true }
-            Button("Zoom In") { commands.zoomIn = true }
+            Button("Default Size") { zoomActions?.reset() }
+                .disabled(zoomActions == nil)
+            Button("Zoom In") { zoomActions?.zoomIn() }
                 .keyboardShortcut("+", modifiers: .command)
-            Button("Zoom Out") { commands.zoomOut = true }
+                .disabled(zoomActions?.canZoomIn != true)
+            Button("Zoom Out") { zoomActions?.zoomOut() }
                 .keyboardShortcut("-", modifiers: .command)
+                .disabled(zoomActions?.canZoomOut != true)
             Divider()
             Picker("Group By", selection: $settings.grouping) {
                 ForEach(SnippetGrouping.allCases) { option in
