@@ -44,12 +44,11 @@ enum DittoIntents {
     static func copyToClipboard(_ snippet: Snippet) {
         Clipboard.copy(snippet.content)
         // Usage telemetry shouldn't land on the undo stack.
-        let undo = context.undoManager
-        undo?.disableUndoRegistration()
-        snippet.copyCount += 1
-        snippet.lastCopiedAt = .now
-        try? context.save()
-        undo?.enableUndoRegistration()
+        context.withoutUndoRegistration {
+            snippet.copyCount += 1
+            snippet.lastCopiedAt = .now
+            try? context.save()
+        }
     }
 }
 

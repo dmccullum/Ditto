@@ -365,17 +365,17 @@ struct SnippetListView: View {
     private func copy(_ snippet: Snippet) {
         UIPasteboard.general.string = snippet.content
         // Usage telemetry shouldn't land on the undo stack.
-        let undo = modelContext.undoManager
-        undo?.disableUndoRegistration()
-        snippet.copyCount += 1
-        snippet.lastCopiedAt = .now
-        try? modelContext.save()
-        undo?.enableUndoRegistration()
+        modelContext.withoutUndoRegistration {
+            snippet.copyCount += 1
+            snippet.lastCopiedAt = .now
+            try? modelContext.save()
+        }
 
         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
             copiedSnippetID = snippet.persistentModelID
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
             // Only clear our own flash — a later copy may own the overlay now.
             guard copiedSnippetID == snippet.persistentModelID else { return }
             withAnimation(.easeOut(duration: 0.3)) { copiedSnippetID = nil }

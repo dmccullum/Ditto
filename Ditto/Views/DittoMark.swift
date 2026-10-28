@@ -13,7 +13,7 @@ import AppKit
 
 /// One half of the mark, traced from the icon's SVG (1024×1024 artboard).
 /// The second half is the first rotated 180° and shifted down-right.
-struct DittoMarkHalf: Shape {
+nonisolated struct DittoMarkHalf: Shape {
     var isSecond = false
     var spread: CGFloat = 1
 
@@ -128,9 +128,7 @@ extension NSImage {
     /// The glyph as a menu bar template image, so it matches the app icon and
     /// takes on the menu bar's own color (the faded back half stays dimmer).
     @MainActor static let dittoMenuBarGlyph: NSImage = {
-        let renderer = ImageRenderer(content: DittoGlyph()
-            .foregroundStyle(.black)
-            .frame(width: 16, height: 16))
+        let renderer = ImageRenderer(content: MenuBarGlyph())
         renderer.scale = 2
         let image = renderer.nsImage ?? NSImage(systemSymbolName: "doc.on.clipboard.fill",
                                                 accessibilityDescription: "Ditto")!
@@ -138,6 +136,16 @@ extension NSImage {
         image.isTemplate = true
         return image
     }()
+}
+
+/// The glyph at menu bar size. A named type rather than an opaque
+/// `some View`, so its main-actor `View` conformance is known to the renderer.
+private struct MenuBarGlyph: View {
+    var body: some View {
+        DittoGlyph()
+            .foregroundStyle(.black)
+            .frame(width: 16, height: 16)
+    }
 }
 
 #Preview {

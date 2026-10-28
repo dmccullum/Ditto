@@ -26,6 +26,19 @@ struct Banner: Identifiable, Equatable {
     let tint: Color
 }
 
+/// A pending Save dialog: the JSON to write and the suggested file name.
+struct PendingExport {
+    let document: DittoDocument
+    let filename: String
+}
+
+/// An error worth stopping for, shown as an alert.
+struct AlertMessage: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+}
+
 /// A pending "new snippet from pasted text" request.
 struct PasteDraft: Identifiable {
     let id = UUID()
@@ -83,6 +96,9 @@ struct ContentView: View {
 
     @State private var categoryPendingDeletion: Category?
     @State private var banner: Banner?
+    @State private var pendingExport: PendingExport?
+    @State private var isImporting = false
+    @State private var alertMessage: AlertMessage?
 
     var body: some View {
         NavigationSplitView {
@@ -118,9 +134,31 @@ struct ContentView: View {
             SnippetEditor(snippet: nil, defaultCategory: selectedCategory, defaultContent: draft.text)
         }
         .confirmDeletion(of: $categoryPendingDeletion, perform: deleteCategory)
+        .fileExporter(
+            isPresented: Binding(get: { pendingExport != nil },
+                                 set: { if !$0 { pendingExport = nil } }),
+            document: pendingExport?.document,
+            contentType: .json,
+            defaultFilename: pendingExport?.filename
+        ) { result in
+            if case .failure(let error) = result {
+                showAlert("Could not write file", message: error.localizedDescription)
+            }
+        }
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
+            importLibrary(result)
+        }
+        .alert(alertMessage?.title ?? "",
+               isPresented: Binding(get: { alertMessage != nil },
+                                    set: { if !$0 { alertMessage = nil } }),
+               presenting: alertMessage) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { alert in
+            Text(alert.message)
+        }
         .onOpenURL { url in
             openLink(url)
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
         }
         .onAppear { modelContext.undoManager = undoManager }
         .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }        .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
@@ -137,13 +175,10 @@ struct ContentView: View {
             if create { isCreatingCategory = true; appCommands.createCategory = false }
         }
         .onChange(of: appCommands.exportLibrary) { _, export in
-            if export {
-                appCommands.exportLibrary = false
-                DispatchQueue.main.async { runExport() }
-            }
+            if export { appCommands.exportLibrary = false; exportLibrary() }
         }
         .onChange(of: appCommands.importLibrary) { _, imp in
-            if imp { appCommands.importLibrary = false; DispatchQueue.main.async { runImport() } }
+            if imp { appCommands.importLibrary = false; isImporting = true }
         }
         .onChange(of: appCommands.zoomIn) { _, v in
             if v { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1); appCommands.zoomIn = false }
@@ -170,18 +205,9 @@ struct ContentView: View {
     private var sidebar: some View {
         List(selection: $selection) {
             Section("Library") {
-                HStack(spacing: 6) {
-                    Image(systemName: "tray.full.fill")
-                        .foregroundStyle(.tint)
-                        .frame(width: 18)
-                    Text("All Snippets")
-                    Spacer()
-                    Text("\(allSnippets.count)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                .padding(.vertical, 2)
-                .listRowBackground(dropHighlight(allRowIsDropTarget))
+                Label("All Snippets", systemImage: "tray.full.fill")
+                    .badge(allSnippets.count)
+                    .listRowBackground(dropHighlight(allRowIsDropTarget))
                 .tag(SidebarSelection.all)
                 .onDrop(
                     of: [.text],
@@ -192,14 +218,12 @@ struct ContentView: View {
                     )
                 )
 
-                HStack(spacing: 6) {
+                Label {
+                    Text("Frequent")
+                } icon: {
                     Image(systemName: "flame.fill")
                         .symbolRenderingMode(.multicolor)
-                        .frame(width: 18)
-                    Text("Frequent")
-                    Spacer()
                 }
-                .padding(.vertical, 2)
                 .tag(SidebarSelection.frequent)
             }
 
@@ -228,17 +252,13 @@ struct ContentView: View {
     private func categoryRow(_ category: Category) -> some View {
         let accent = SnippetColor.color(for: category.colorName)
         let isTarget = dropTargetCategoryID == category.persistentModelID
-        return HStack(spacing: 6) {
+        return Label {
+            Text(category.name)
+        } icon: {
             Image(systemName: category.symbolName)
                 .foregroundStyle(accent)
-                .frame(width: 18)
-            Text(category.name)
-            Spacer()
-            Text("\(category.snippets.count)")
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
         }
-        .padding(.vertical, 2)
+        .badge(category.snippets.count)
         .contentShape(Rectangle())
         .listRowBackground(dropHighlight(isTarget, tint: accent))
         .onDrop(
@@ -696,16 +716,7 @@ struct ContentView: View {
         .background {
             ClickOutsideSearchMonitor(onClickOutside: dismissQuickSearch)
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6))
-        }
-        // A broad ambient shadow plus tighter casts in both directions keeps
-        // the panel distinct even over Ditto's dark toolbar and card grid.
-        .shadow(color: .black.opacity(0.24), radius: 64, y: 10)
-        .shadow(color: .black.opacity(0.30), radius: 26, y: 2)
-        .shadow(color: .black.opacity(0.22), radius: 18, y: -8)
+        .glassEffect(.regular, in: .rect(cornerRadius: 18))
     }
 
     private func quickSearchRow(_ snippet: Snippet) -> some View {
@@ -741,7 +752,7 @@ struct ContentView: View {
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(selected ? accent.opacity(0.18) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -754,7 +765,7 @@ struct ContentView: View {
         quickSearchText = characters
         isQuickSearchPresented = true
         quickSearchSelection = SnippetSearch.results(for: characters, in: allSnippets).first?.persistentModelID
-        DispatchQueue.main.async { quickSearchIsFocused = true }
+        Task { quickSearchIsFocused = true }
     }
 
     private func dismissQuickSearch() {
@@ -775,12 +786,11 @@ struct ContentView: View {
         guard let snippet = selectedQuickSearchSnippet else { return }
         Clipboard.copy(snippet.content)
 
-        let undo = modelContext.undoManager
-        undo?.disableUndoRegistration()
-        snippet.copyCount += 1
-        snippet.lastCopiedAt = .now
-        try? modelContext.save()
-        undo?.enableUndoRegistration()
+        modelContext.withoutUndoRegistration {
+            snippet.copyCount += 1
+            snippet.lastCopiedAt = .now
+            try? modelContext.save()
+        }
 
         dismissQuickSearch()
     }
@@ -933,31 +943,28 @@ struct ContentView: View {
         try? modelContext.save()
     }
 
-    private func runExport() {
-        let data: Data
+    private func exportLibrary() {
+        export(snippets: allSnippets, categories: categories,
+               filename: "Ditto Library \(Date.now.formatted(.dateTime.year().month().day()))")
+    }
+
+    /// Export a single category (with its snippets) to a JSON file.
+    private func exportCategory(_ category: Category) {
+        export(snippets: category.snippets, categories: [category],
+               filename: "Ditto - \(category.name)")
+    }
+
+    private func export(snippets: [Snippet], categories: [Category], filename: String) {
         do {
-            data = try exportDitto(snippets: allSnippets, categories: categories)
+            let data = try exportDitto(snippets: snippets, categories: categories)
+            pendingExport = PendingExport(document: DittoDocument(data: data), filename: filename)
         } catch {
             showAlert("Export failed", message: error.localizedDescription)
-            return
-        }
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "Ditto Library \(Date.now.formatted(.dateTime.year().month().day()))"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try data.write(to: url, options: .atomic)
-        } catch {
-            showAlert("Could not write file", message: error.localizedDescription)
         }
     }
 
     private func showAlert(_ title: String, message: String) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.runModal()
+        alertMessage = AlertMessage(title: title, message: message)
     }
 
     /// Copy a self-contained `ditto://import` link for this category and its
@@ -970,33 +977,11 @@ struct ContentView: View {
         Clipboard.copy(link.absoluteString)
     }
 
-    /// Export a single category (with its snippets) to a JSON file.
-    private func exportCategory(_ category: Category) {
-        let data: Data
+    private func importLibrary(_ result: Result<URL, Error>) {
         do {
-            data = try exportDitto(snippets: category.snippets, categories: [category])
-        } catch {
-            showAlert("Export failed", message: error.localizedDescription)
-            return
-        }
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "Ditto - \(category.name)"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try data.write(to: url, options: .atomic)
-        } catch {
-            showAlert("Could not write file", message: error.localizedDescription)
-        }
-    }
-
-    private func runImport() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.json]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
+            let url = try result.get()
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             let data = try Data(contentsOf: url)
             try modelContext.insertUndoably(actionName: "Import Library") {
                 try importDitto(data: data, into: modelContext)
@@ -1057,7 +1042,7 @@ private struct TypeToSearchMonitor: NSViewRepresentable {
                       characters.unicodeScalars.allSatisfy({ $0.value >= 0x20 && $0.value != 0x7f })
                 else { return event }
 
-                DispatchQueue.main.async { self.onType(characters) }
+                Task { self.onType(characters) }
                 return nil
             }
         }
@@ -1067,7 +1052,7 @@ private struct TypeToSearchMonitor: NSViewRepresentable {
             monitor = nil
         }
 
-        deinit { uninstall() }
+        isolated deinit { uninstall() }
     }
 }
 
@@ -1109,7 +1094,7 @@ private struct ClickOutsideSearchMonitor: NSViewRepresentable {
                 let pointInPanel = view.convert(event.locationInWindow, from: nil)
                 guard !view.bounds.contains(pointInPanel) else { return event }
 
-                DispatchQueue.main.async { self.onClickOutside() }
+                Task { self.onClickOutside() }
                 // Treat search like a modal layer: the first outside click
                 // dismisses it without activating the control underneath.
                 return nil
@@ -1121,7 +1106,7 @@ private struct ClickOutsideSearchMonitor: NSViewRepresentable {
             monitor = nil
         }
 
-        deinit { uninstall() }
+        isolated deinit { uninstall() }
     }
 }
 

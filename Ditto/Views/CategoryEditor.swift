@@ -89,10 +89,8 @@ struct CategoryEditor: View {
         }
         .frame(width: 420, height: 560)
         .navigationTitle(isEditing ? "Edit Category" : "New Category")
-        .onAppear {
-            loadInitialValues()
-            DispatchQueue.main.async { nameFocused = true }
-        }
+        .defaultFocus($nameFocused, true)
+        .onAppear(perform: loadInitialValues)
     }
 
     private func loadInitialValues() {

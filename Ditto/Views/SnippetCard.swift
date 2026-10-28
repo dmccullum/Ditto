@@ -183,15 +183,15 @@ struct SnippetCard: View {
     private func copy() {
         Clipboard.copy(snippet.content)
         // Usage telemetry shouldn't land on the undo stack.
-        let undo = modelContext.undoManager
-        undo?.disableUndoRegistration()
-        snippet.copyCount += 1
-        snippet.lastCopiedAt = .now
-        try? modelContext.save()
-        undo?.enableUndoRegistration()
+        modelContext.withoutUndoRegistration {
+            snippet.copyCount += 1
+            snippet.lastCopiedAt = .now
+            try? modelContext.save()
+        }
 
         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { didCopy = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+        Task {
+            try? await Task.sleep(for: .seconds(0.9))
             withAnimation(.easeOut(duration: 0.25)) { didCopy = false }
         }
     }
