@@ -321,6 +321,26 @@ private typealias Category = Ditto.Category
         }
     }
 
+    // MARK: - Copying several snippets
+
+    @Test func joinedPutsShortLinesOnePerLine() {
+        let longTags = (1...20).map { "#hashtag\($0)" }.joined(separator: " ")
+        #expect(longTags.count > 80)
+        #expect(Clipboard.joined(["https://example.com/a", "#one #two", longTags, "@ditto"])
+                == "https://example.com/a\n#one #two\n\(longTags)\n@ditto")
+    }
+
+    @Test func joinedSeparatesParagraphsWithBlankLine() {
+        let sentence = String(repeating: "This is a long sentence of prose. ", count: 4)
+        #expect(Clipboard.joined(["Link: https://a.b", sentence])
+                == "Link: https://a.b\n\n\(sentence.trimmingCharacters(in: .whitespaces))")
+        #expect(Clipboard.joined(["Hi,\nThanks!", "short"]) == "Hi,\nThanks!\n\nshort")
+    }
+
+    @Test func joinedLeavesASingleSnippetUntouched() {
+        #expect(Clipboard.joined(["  keep my spacing\n"]) == "  keep my spacing\n")
+    }
+
     @Test func newModelsGetStableUUIDs() {
         let a = Snippet(content: "one")
         let b = Snippet(content: "two")

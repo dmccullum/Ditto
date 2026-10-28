@@ -94,6 +94,18 @@ struct ContentView: View {
     @State private var dropTargetCategoryID: PersistentIdentifier?
     @State private var allRowIsDropTarget = false
 
+    // Finder-style selection in the card grid. A plain click copies and
+    // selects; ⌘-click and ⇧-click build a selection without copying. The
+    // anchor is where a ⇧-range starts; the cursor is where arrows move from.
+    @State private var selectedSnippetIDs: Set<PersistentIdentifier> = []
+    @State private var selectionAnchor: PersistentIdentifier?
+    @State private var selectionCursor: PersistentIdentifier?
+    @State private var scrollTarget: PersistentIdentifier?
+    @State private var previewingSnippetID: PersistentIdentifier?
+    @State private var flashingSnippetIDs: Set<PersistentIdentifier> = []
+    @State private var gridWidth: CGFloat = 0
+    @FocusState private var gridIsFocused: Bool
+
     @State private var categoryPendingDeletion: Category?
     @State private var banner: Banner?
     @State private var pendingExport: PendingExport?
@@ -161,7 +173,8 @@ struct ContentView: View {
             NSApp.activate()
         }
         .onAppear { modelContext.undoManager = undoManager }
-        .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }        .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
+        .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }
+        .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
             // Fires only when no text field consumes the paste, so normal
             // ⌘V in the search/editor fields still works.
             let text = NSPasteboard.general.string(forType: .string) ?? ""
@@ -198,6 +211,7 @@ struct ContentView: View {
         .onChange(of: quickSearchText) { _, _ in
             quickSearchSelection = quickSearchResults.first?.persistentModelID
         }
+        .onChange(of: selection) { _, _ in clearSelection() }
     }
 
     // MARK: - Sidebar
@@ -208,15 +222,15 @@ struct ContentView: View {
                 Label("All Snippets", systemImage: "tray.full.fill")
                     .badge(allSnippets.count)
                     .listRowBackground(dropHighlight(allRowIsDropTarget))
-                .tag(SidebarSelection.all)
-                .onDrop(
-                    of: [.text],
-                    delegate: UncategorizeDropDelegate(
-                        draggedSnippet: $draggedSnippet,
-                        highlighted: $allRowIsDropTarget,
-                        onUncategorize: { move($0, to: nil) }
+                    .tag(SidebarSelection.all)
+                    .onDrop(
+                        of: [.text],
+                        delegate: UncategorizeDropDelegate(
+                            draggedSnippet: $draggedSnippet,
+                            highlighted: $allRowIsDropTarget,
+                            onUncategorize: { move($0, to: nil) }
+                        )
                     )
-                )
 
                 Label {
                     Text("Frequent")
@@ -306,6 +320,43 @@ struct ContentView: View {
                 snippetGrid
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { gridWidth = $0 }
+        .focusable()
+        .focusEffectDisabled()
+        .focused($gridIsFocused)
+        .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow]) { press in
+            moveSelection(press.key, extending: press.modifiers.contains(.shift))
+            return .handled
+        }
+        .onKeyPress(.return) {
+            guard !selectedSnippets.isEmpty else { return .ignored }
+            copy(selectedSnippets)
+            return .handled
+        }
+        .onKeyPress(.space) {
+            guard let cursor = selectionCursor ?? selectedSnippets.first?.persistentModelID
+            else { return .ignored }
+            previewingSnippetID = previewingSnippetID == cursor ? nil : cursor
+            return .handled
+        }
+        .onKeyPress(.escape) {
+            guard !selectedSnippetIDs.isEmpty else { return .ignored }
+            clearSelection()
+            return .handled
+        }
+        .onDeleteCommand { delete(selectedSnippets) }
+        .onCopyCommand {
+            let snippets = selectedSnippets
+            guard !snippets.isEmpty else { return [] }
+            recordCopies(snippets)
+            return [NSItemProvider(object: Clipboard.joined(snippets.map(\.content)) as NSString)]
+        }
+        .onCommand(#selector(NSResponder.selectAll(_:))) {
+            let all = visibleSnippets
+            selectedSnippetIDs = Set(all.map(\.persistentModelID))
+            selectionAnchor = all.first?.persistentModelID
+            selectionCursor = all.last?.persistentModelID
+        }
         .navigationTitle(detailTitle)
         .toolbar {
             // Native toolbar items: macOS auto-groups them into pills and fits
@@ -362,29 +413,61 @@ struct ContentView: View {
     }
 
     private var snippetGrid: some View {
-        ScrollView {
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: cardMinWidth), spacing: 16)],
-                spacing: 16
-            ) {
-                ForEach(gridSnippets) { snippet in
-                    SnippetCard(
-                        snippet: snippet,
-                        sizeLevel: sizeLevel,
-                        draggedSnippet: $draggedSnippet,
-                        onEdit: { editingSnippet = snippet },
-                        onReorder: { reorderSnippetLocally($0, target: $1) },
-                        onCommit: commitSnippetOrder
-                    )
-                }
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: cardMinWidth), spacing: Self.gridSpacing)],
+                    spacing: Self.gridSpacing
+                ) {
+                    ForEach(gridSnippets) { snippet in
+                        card(for: snippet)
+                    }
 
-                // The add tile only appears in views you populate manually.
-                if isReorderable {
-                    AddSnippetCard(sizeLevel: sizeLevel) { isCreatingSnippet = true }
+                    // The add tile only appears in views you populate manually.
+                    if isReorderable {
+                        AddSnippetCard(sizeLevel: sizeLevel) { isCreatingSnippet = true }
+                    }
                 }
+                .padding(Self.gridPadding)
+                .contentShape(Rectangle())
+                .onTapGesture { clearSelection(); gridIsFocused = true }
             }
-            .padding(20)
+            .onChange(of: scrollTarget) { _, id in scroll(proxy, to: id) }
         }
+    }
+
+    private static let gridSpacing: CGFloat = 16
+    private static let gridPadding: CGFloat = 20
+
+    /// One card, wired to the grid's selection, copy, and reorder state.
+    private func card(for snippet: Snippet) -> some View {
+        let id = snippet.persistentModelID
+        let targets = actionTargets(for: snippet)
+        return SnippetCard(
+            snippet: snippet,
+            sizeLevel: sizeLevel,
+            isSelected: selectedSnippetIDs.contains(id),
+            isSelectionFocused: gridIsFocused,
+            isFlashing: flashingSnippetIDs.contains(id),
+            isShowingPreview: Binding(get: { previewingSnippetID == id },
+                                      set: { previewingSnippetID = $0 ? id : nil }),
+            draggedSnippet: $draggedSnippet,
+            actionCount: targets.count,
+            allTargetsPinned: targets.allSatisfy(\.isPinned),
+            onClick: { click(snippet) },
+            onCopy: { copy(actionTargets(for: snippet)) },
+            onEdit: { editingSnippet = snippet },
+            onTogglePin: { togglePin(actionTargets(for: snippet)) },
+            onDelete: { delete(actionTargets(for: snippet)) },
+            onReorder: { reorderSnippetLocally($0, target: $1) },
+            onCommit: commitSnippetOrder
+        )
+    }
+
+    private func scroll(_ proxy: ScrollViewProxy, to id: PersistentIdentifier?) {
+        guard let id else { return }
+        withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) }
+        scrollTarget = nil
     }
 
     // MARK: - Grouped view
@@ -476,33 +559,32 @@ struct ContentView: View {
     }
 
     private var groupedSnippetView: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 20) {
-                ForEach(snippetGroups) { group in
-                    let collapsed = collapsedGroups.contains(group.id)
-                    VStack(alignment: .leading, spacing: 12) {
-                        groupHeader(group, collapsed: collapsed)
-                        if !collapsed {
-                            LazyVGrid(
-                                columns: [GridItem(.adaptive(minimum: cardMinWidth), spacing: 16)],
-                                spacing: 16
-                            ) {
-                                ForEach(group.snippets) { snippet in
-                                    SnippetCard(
-                                        snippet: snippet,
-                                        sizeLevel: sizeLevel,
-                                        draggedSnippet: $draggedSnippet,
-                                        onEdit: { editingSnippet = snippet },
-                                        onReorder: { reorderSnippetLocally($0, target: $1) },
-                                        onCommit: commitSnippetOrder
-                                    )
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 20) {
+                    ForEach(snippetGroups) { group in
+                        let collapsed = collapsedGroups.contains(group.id)
+                        VStack(alignment: .leading, spacing: 12) {
+                            groupHeader(group, collapsed: collapsed)
+                            if !collapsed {
+                                LazyVGrid(
+                                    columns: [GridItem(.adaptive(minimum: cardMinWidth),
+                                                       spacing: Self.gridSpacing)],
+                                    spacing: Self.gridSpacing
+                                ) {
+                                    ForEach(group.snippets) { snippet in
+                                        card(for: snippet)
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                .padding(Self.gridPadding)
+                .contentShape(Rectangle())
+                .onTapGesture { clearSelection(); gridIsFocused = true }
             }
-            .padding(20)
+            .onChange(of: scrollTarget) { _, id in scroll(proxy, to: id) }
         }
     }
 
@@ -784,14 +866,7 @@ struct ContentView: View {
 
     private func copyQuickSearchSelection() {
         guard let snippet = selectedQuickSearchSnippet else { return }
-        Clipboard.copy(snippet.content)
-
-        modelContext.withoutUndoRegistration {
-            snippet.copyCount += 1
-            snippet.lastCopiedAt = .now
-            try? modelContext.save()
-        }
-
+        copy([snippet])
         dismissQuickSearch()
     }
 
@@ -828,6 +903,154 @@ struct ContentView: View {
 
     private func show(_ message: String, symbol: String, tint: Color) {
         withAnimation(.bouncy) { banner = Banner(message: message, symbol: symbol, tint: tint) }
+    }
+
+    // MARK: - Selection
+
+    /// The grid as laid out on screen: rows of cards, section by section, so
+    /// ↑/↓ land on the card visually above or below.
+    private var gridRows: [[Snippet]] {
+        let available = gridWidth - Self.gridPadding * 2
+        let columns = max(1, Int((available + Self.gridSpacing) / (cardMinWidth + Self.gridSpacing)))
+        let sections = isGrouped
+            ? snippetGroups.filter { !collapsedGroups.contains($0.id) }.map(\.snippets)
+            : [gridSnippets]
+        return sections.flatMap { items in
+            stride(from: 0, to: items.count, by: columns).map {
+                Array(items[$0..<min($0 + columns, items.count)])
+            }
+        }
+    }
+
+    /// Every card currently on screen, in reading order.
+    private var visibleSnippets: [Snippet] { gridRows.flatMap { $0 } }
+
+    private var selectedSnippets: [Snippet] {
+        visibleSnippets.filter { selectedSnippetIDs.contains($0.persistentModelID) }
+    }
+
+    /// What a card's context menu acts on: the whole selection when the card
+    /// is part of a multi-selection, otherwise just that card.
+    private func actionTargets(for snippet: Snippet) -> [Snippet] {
+        let id = snippet.persistentModelID
+        guard selectedSnippetIDs.count > 1, selectedSnippetIDs.contains(id) else { return [snippet] }
+        return selectedSnippets
+    }
+
+    private func click(_ snippet: Snippet) {
+        let id = snippet.persistentModelID
+        // The click's own flags, not the keyboard's state by the time the
+        // button fires on mouse-up.
+        let modifiers = NSApp.currentEvent?.modifierFlags ?? NSEvent.modifierFlags
+        gridIsFocused = true
+        if modifiers.contains(.command) {
+            if selectedSnippetIDs.remove(id) == nil { selectedSnippetIDs.insert(id) }
+            selectionAnchor = id
+            selectionCursor = id
+        } else if modifiers.contains(.shift), let anchor = selectionAnchor {
+            selectRange(from: anchor, to: id)
+        } else {
+            select(snippet)
+            copy([snippet])
+        }
+    }
+
+    private func select(_ snippet: Snippet) {
+        let id = snippet.persistentModelID
+        selectedSnippetIDs = [id]
+        selectionAnchor = id
+        selectionCursor = id
+    }
+
+    private func selectRange(from anchor: PersistentIdentifier, to end: PersistentIdentifier) {
+        let ids = visibleSnippets.map(\.persistentModelID)
+        guard let a = ids.firstIndex(of: anchor), let b = ids.firstIndex(of: end) else { return }
+        selectedSnippetIDs = Set(ids[min(a, b)...max(a, b)])
+        selectionCursor = end
+    }
+
+    private func clearSelection() {
+        selectedSnippetIDs = []
+        selectionAnchor = nil
+        selectionCursor = nil
+    }
+
+    private func moveSelection(_ key: KeyEquivalent, extending: Bool) {
+        let rows = gridRows
+        let all = rows.flatMap { $0 }
+        guard let first = all.first else { return }
+        guard let cursor = selectionCursor,
+              let row = rows.firstIndex(where: { $0.contains { $0.persistentModelID == cursor } }),
+              let column = rows[row].firstIndex(where: { $0.persistentModelID == cursor }),
+              let index = all.firstIndex(where: { $0.persistentModelID == cursor })
+        else {
+            select(first)
+            scrollTarget = first.persistentModelID
+            return
+        }
+
+        let target: Snippet?
+        switch key {
+        case .leftArrow:  target = index > 0 ? all[index - 1] : nil
+        case .rightArrow: target = index < all.count - 1 ? all[index + 1] : nil
+        case .upArrow:    target = row > 0 ? rows[row - 1][min(column, rows[row - 1].count - 1)] : nil
+        case .downArrow:
+            target = row < rows.count - 1 ? rows[row + 1][min(column, rows[row + 1].count - 1)] : nil
+        default:          target = nil
+        }
+        guard let target else { return }
+
+        if extending {
+            selectRange(from: selectionAnchor ?? cursor, to: target.persistentModelID)
+        } else {
+            select(target)
+        }
+        scrollTarget = target.persistentModelID
+    }
+
+    /// Copy one or more snippets, joined for pasting, and flash their cards.
+    private func copy(_ snippets: [Snippet]) {
+        guard !snippets.isEmpty else { return }
+        Clipboard.copy(Clipboard.joined(snippets.map(\.content)))
+        recordCopies(snippets)
+    }
+
+    private func recordCopies(_ snippets: [Snippet]) {
+        // Usage telemetry shouldn't land on the undo stack.
+        modelContext.withoutUndoRegistration {
+            for snippet in snippets {
+                snippet.copyCount += 1
+                snippet.lastCopiedAt = .now
+            }
+            try? modelContext.save()
+        }
+
+        let ids = Set(snippets.map(\.persistentModelID))
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { flashingSnippetIDs.formUnion(ids) }
+        Task {
+            try? await Task.sleep(for: .seconds(0.9))
+            withAnimation(.easeOut(duration: 0.25)) { flashingSnippetIDs.subtract(ids) }
+        }
+    }
+
+    private func togglePin(_ snippets: [Snippet]) {
+        let pin = !snippets.allSatisfy(\.isPinned)
+        for snippet in snippets { snippet.isPinned = pin }
+        try? modelContext.save()
+    }
+
+    /// Delete as one undoable step, then select the next card, as Finder does.
+    private func delete(_ snippets: [Snippet]) {
+        guard !snippets.isEmpty else { return }
+        let deleted = Set(snippets.map(\.persistentModelID))
+        let all = visibleSnippets
+        let lastIndex = all.lastIndex { deleted.contains($0.persistentModelID) } ?? 0
+        let next = all[lastIndex...].first { !deleted.contains($0.persistentModelID) }
+            ?? all[..<lastIndex].last { !deleted.contains($0.persistentModelID) }
+
+        modelContext.deleteUndoably(snippets: snippets, actionName: snippets.count == 1
+                                    ? "Delete Snippet" : "Delete \(snippets.count) Snippets")
+        if let next { select(next) } else { clearSelection() }
     }
 
     // MARK: - Actions
@@ -1039,6 +1262,7 @@ private struct TypeToSearchMonitor: NSViewRepresentable {
                 guard event.modifierFlags.intersection(disallowed).isEmpty,
                       let characters = event.characters,
                       !characters.isEmpty,
+                      characters != " ",   // Space previews the selected card.
                       characters.unicodeScalars.allSatisfy({ $0.value >= 0x20 && $0.value != 0x7f })
                 else { return event }
 
