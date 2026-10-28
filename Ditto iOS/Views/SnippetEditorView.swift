@@ -141,9 +141,11 @@ struct SnippetEditorView: View {
             snippet.content = content
             snippet.category = selectedCategory
         } else {
-            modelContext.insert(Snippet(title: title, content: content,
-                                        sortIndex: Snippet.topSortIndex(in: modelContext),
-                                        category: selectedCategory))
+            modelContext.insertUndoably(actionName: "New Snippet") {
+                modelContext.insert(Snippet(title: title, content: content,
+                                            sortIndex: Snippet.topSortIndex(in: modelContext),
+                                            category: selectedCategory))
+            }
         }
         try? modelContext.save()
         dismiss()
@@ -151,8 +153,7 @@ struct SnippetEditorView: View {
 
     private func deleteSnippet() {
         guard let snippet else { return }
-        modelContext.delete(snippet)
-        try? modelContext.save()
+        modelContext.deleteUndoably(snippets: [snippet], actionName: "Delete Snippet")
         dismiss()
     }
 }

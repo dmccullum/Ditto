@@ -66,8 +66,7 @@ struct ManageCategoriesView: View {
         .sheet(item: $editingCategory) { CategoryEditorView(category: $0) }
         .sheet(isPresented: $isCreatingCategory) { CategoryEditorView() }
         .confirmDeletion(of: $deletingCategory) { category in
-            modelContext.delete(category)
-            try? modelContext.save()
+            modelContext.deleteUndoably(categories: [category], actionName: "Delete Category")
         }
     }
 

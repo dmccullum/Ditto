@@ -44,12 +44,11 @@ enum DittoIntents {
     static func copyToClipboard(_ snippet: Snippet) {
         Clipboard.copy(snippet.content)
         // Usage telemetry shouldn't land on the undo stack.
-        let undo = context.undoManager
-        undo?.disableUndoRegistration()
-        snippet.copyCount += 1
-        snippet.lastCopiedAt = .now
-        try? context.save()
-        undo?.enableUndoRegistration()
+        context.withoutUndoRegistration {
+            snippet.copyCount += 1
+            snippet.lastCopiedAt = .now
+            try? context.save()
+        }
     }
 }
 
@@ -221,8 +220,12 @@ struct CreateSnippetIntent: AppIntent {
         let snippet = Snippet(title: name ?? "", content: text,
                               sortIndex: Snippet.topSortIndex(in: DittoIntents.context),
                               category: category)
-        DittoIntents.context.insert(snippet)
-        try DittoIntents.context.save()
+        // Kept off the window's undo stack: ⌘Z there shouldn't remove
+        // something saved from Shortcuts.
+        try DittoIntents.context.withoutUndoRegistration {
+            DittoIntents.context.insert(snippet)
+            try DittoIntents.context.save()
+        }
         await DittoSpotlight.refresh()
         return .result(value: SnippetEntity(snippet), dialog: "Saved “\(snippet.displayTitle)”.")
     }

@@ -153,7 +153,7 @@ struct MenuBarView: View {
         HStack {
             Button {
                 openWindow(id: "main")
-                NSApp.activate(ignoringOtherApps: true)
+                NSApp.activate()
             } label: {
                 Label("Open Ditto", systemImage: "macwindow")
             }
@@ -242,23 +242,23 @@ struct MenuBarView: View {
 
     /// Put the cursor in search so typing starts filtering right away.
     private func focusSearch() {
-        DispatchQueue.main.async { searchFocused = true }
+        Task { searchFocused = true }
     }
 
     private func copy(_ snippet: Snippet) {
         Clipboard.copy(snippet.content)
         // Usage telemetry shouldn't land on the undo stack.
-        let undo = modelContext.undoManager
-        undo?.disableUndoRegistration()
-        snippet.copyCount += 1
-        snippet.lastCopiedAt = .now
-        try? modelContext.save()
-        undo?.enableUndoRegistration()
+        modelContext.withoutUndoRegistration {
+            snippet.copyCount += 1
+            snippet.lastCopiedAt = .now
+            try? modelContext.save()
+        }
 
         withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
             justCopiedID = snippet.persistentModelID
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+        Task {
+            try? await Task.sleep(for: .seconds(0.9))
             withAnimation(.easeOut(duration: 0.25)) {
                 if justCopiedID == snippet.persistentModelID { justCopiedID = nil }
             }
@@ -272,14 +272,26 @@ private struct HostWindowReader: NSViewRepresentable {
     @Binding var window: NSWindow?
 
     func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { window = view.window }
-        return view
+        // AppKit attaches the view mid-update; report on the next turn.
+        WindowReportingView { newWindow in Task { window = newWindow } }
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-        if nsView.window !== window {
-            DispatchQueue.main.async { window = nsView.window }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class WindowReportingView: NSView {
+        let onWindowChange: (NSWindow?) -> Void
+
+        init(onWindowChange: @escaping (NSWindow?) -> Void) {
+            self.onWindowChange = onWindowChange
+            super.init(frame: .zero)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            onWindowChange(window)
         }
     }
 }

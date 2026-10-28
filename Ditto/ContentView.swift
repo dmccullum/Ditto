@@ -26,6 +26,19 @@ struct Banner: Identifiable, Equatable {
     let tint: Color
 }
 
+/// A pending Save dialog: the JSON to write and the suggested file name.
+struct PendingExport {
+    let document: DittoDocument
+    let filename: String
+}
+
+/// An error worth stopping for, shown as an alert.
+struct AlertMessage: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+}
+
 /// A pending "new snippet from pasted text" request.
 struct PasteDraft: Identifiable {
     let id = UUID()
@@ -69,8 +82,9 @@ struct ContentView: View {
     @State private var isCreatingCategory = false
     @State private var pasteDraft: PasteDraft?
 
-    // The snippet currently being dragged, captured when the drag starts.
-    @State private var draggedSnippet: Snippet?
+    // The snippets in the current drag (the whole selection when a selected
+    // card is dragged), read from the drag session.
+    @State private var draggedSnippetIDs: [PersistentIdentifier] = []
 
     // A local copy of the displayed snippets that we reorder live during a drag,
     // committing to the database only on drop. Keeping reordering out of the
@@ -81,8 +95,24 @@ struct ContentView: View {
     @State private var dropTargetCategoryID: PersistentIdentifier?
     @State private var allRowIsDropTarget = false
 
+    // Finder-style selection in the card grid. A plain click only copies,
+    // but marks where ⇧-click and the arrow keys start from; ⌘-click,
+    // ⇧-click, arrows, and ⌘A build a visible selection. The anchor is where
+    // a ⇧-range starts; the cursor is where arrows move from.
+    @State private var selectedSnippetIDs: Set<PersistentIdentifier> = []
+    @State private var selectionAnchor: PersistentIdentifier?
+    @State private var selectionCursor: PersistentIdentifier?
+    @State private var scrollTarget: PersistentIdentifier?
+    @State private var previewingSnippetID: PersistentIdentifier?
+    @State private var flashingSnippetIDs: Set<PersistentIdentifier> = []
+    @State private var gridSize: CGSize = .zero
+    @FocusState private var gridIsFocused: Bool
+
     @State private var categoryPendingDeletion: Category?
     @State private var banner: Banner?
+    @State private var pendingExport: PendingExport?
+    @State private var isImporting = false
+    @State private var alertMessage: AlertMessage?
 
     var body: some View {
         NavigationSplitView {
@@ -118,9 +148,31 @@ struct ContentView: View {
             SnippetEditor(snippet: nil, defaultCategory: selectedCategory, defaultContent: draft.text)
         }
         .confirmDeletion(of: $categoryPendingDeletion, perform: deleteCategory)
+        .fileExporter(
+            isPresented: Binding(get: { pendingExport != nil },
+                                 set: { if !$0 { pendingExport = nil } }),
+            document: pendingExport?.document,
+            contentType: .json,
+            defaultFilename: pendingExport?.filename
+        ) { result in
+            if case .failure(let error) = result {
+                showAlert("Could not write file", message: error.localizedDescription)
+            }
+        }
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
+            importLibrary(result)
+        }
+        .alert(alertMessage?.title ?? "",
+               isPresented: Binding(get: { alertMessage != nil },
+                                    set: { if !$0 { alertMessage = nil } }),
+               presenting: alertMessage) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { alert in
+            Text(alert.message)
+        }
         .onOpenURL { url in
             openLink(url)
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
         }
         .onAppear { modelContext.undoManager = undoManager }
         .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }
@@ -138,13 +190,10 @@ struct ContentView: View {
             if create { isCreatingCategory = true; appCommands.createCategory = false }
         }
         .onChange(of: appCommands.exportLibrary) { _, export in
-            if export {
-                appCommands.exportLibrary = false
-                DispatchQueue.main.async { runExport() }
-            }
+            if export { appCommands.exportLibrary = false; exportLibrary() }
         }
         .onChange(of: appCommands.importLibrary) { _, imp in
-            if imp { appCommands.importLibrary = false; DispatchQueue.main.async { runImport() } }
+            if imp { appCommands.importLibrary = false; isImporting = true }
         }
         .onChange(of: appCommands.zoomIn) { _, v in
             if v { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1); appCommands.zoomIn = false }
@@ -155,15 +204,16 @@ struct ContentView: View {
         .onChange(of: appCommands.resetZoom) { _, v in
             if v { sizeLevel = 2; appCommands.resetZoom = false }
         }
-        .onChange(of: draggedSnippet) { _, dragged in
+        .onChange(of: draggedSnippetIDs) { old, new in
             // Snapshot the current order only when a drag begins. The rest of
             // the time the grid renders straight from the query, so ordinary
             // clicks don't pay for a mirror resync.
-            if dragged != nil { displayOrder = filteredSnippets }
+            if old.isEmpty && !new.isEmpty { displayOrder = filteredSnippets }
         }
         .onChange(of: quickSearchText) { _, _ in
             quickSearchSelection = quickSearchResults.first?.persistentModelID
         }
+        .onChange(of: selection) { _, _ in clearSelection() }
     }
 
     // MARK: - Sidebar
@@ -171,36 +221,18 @@ struct ContentView: View {
     private var sidebar: some View {
         List(selection: $selection) {
             Section("Library") {
-                HStack(spacing: 6) {
-                    Image(systemName: "tray.full.fill")
-                        .foregroundStyle(.tint)
-                        .frame(width: 18)
-                    Text("All Snippets")
-                    Spacer()
-                    Text("\(allSnippets.count)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                .padding(.vertical, 2)
-                .listRowBackground(dropHighlight(allRowIsDropTarget))
-                .tag(SidebarSelection.all)
-                .onDrop(
-                    of: [.text],
-                    delegate: UncategorizeDropDelegate(
-                        draggedSnippet: $draggedSnippet,
-                        highlighted: $allRowIsDropTarget,
-                        onUncategorize: { move($0, to: nil) }
-                    )
-                )
+                Label("All Snippets", systemImage: "tray.full.fill")
+                    .badge(allSnippets.count)
+                    .listRowBackground(dropHighlight(allRowIsDropTarget))
+                    .tag(SidebarSelection.all)
+                    .snippetDropTarget(isTargeted: $allRowIsDropTarget) { refile($0, to: nil) }
 
-                HStack(spacing: 6) {
+                Label {
+                    Text("Frequent")
+                } icon: {
                     Image(systemName: "flame.fill")
                         .symbolRenderingMode(.multicolor)
-                        .frame(width: 18)
-                    Text("Frequent")
-                    Spacer()
                 }
-                .padding(.vertical, 2)
                 .tag(SidebarSelection.frequent)
             }
 
@@ -228,29 +260,24 @@ struct ContentView: View {
 
     private func categoryRow(_ category: Category) -> some View {
         let accent = SnippetColor.color(for: category.colorName)
-        let isTarget = dropTargetCategoryID == category.persistentModelID
-        return HStack(spacing: 6) {
+        let id = category.persistentModelID
+        let isTarget = dropTargetCategoryID == id
+        return Label {
+            Text(category.name)
+        } icon: {
             Image(systemName: category.symbolName)
                 .foregroundStyle(accent)
-                .frame(width: 18)
-            Text(category.name)
-            Spacer()
-            Text("\(category.snippets.count)")
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
         }
-        .padding(.vertical, 2)
+        .badge(category.snippets.count)
         .contentShape(Rectangle())
         .listRowBackground(dropHighlight(isTarget, tint: accent))
-        .onDrop(
-            of: [.text],
-            delegate: CategoryDropDelegate(
-                target: category,
-                draggedSnippet: $draggedSnippet,
-                highlightedCategoryID: $dropTargetCategoryID,
-                onRefile: { move($0, to: category) }
-            )
-        )
+        .snippetDropTarget(isTargeted: Binding(
+            get: { dropTargetCategoryID == id },
+            set: { targeted in
+                if targeted { dropTargetCategoryID = id }
+                else if dropTargetCategoryID == id { dropTargetCategoryID = nil }
+            }
+        )) { refile($0, to: category) }
         .contextMenu {
             Button("Edit…", systemImage: "pencil") { editingCategory = category }
             Button("Duplicate", systemImage: "plus.square.on.square") { duplicateCategory(category) }
@@ -286,6 +313,51 @@ struct ContentView: View {
             } else {
                 snippetGrid
             }
+        }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { gridSize = $0 }
+        .dragContainer(for: DraggedSnippet.self, itemID: \.id) { ids in
+            ids.compactMap { id in
+                allSnippets.first { $0.persistentModelID == id }
+                    .map { DraggedSnippet(id: id, content: $0.content) }
+            }
+        }
+        .dragContainerSelection(Array(selectedSnippetIDs))
+        .onDragSessionUpdated(trackDrag)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($gridIsFocused)
+        .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow]) { press in
+            moveSelection(press.key, extending: press.modifiers.contains(.shift))
+            return .handled
+        }
+        .onKeyPress(.return) {
+            guard !selectedSnippets.isEmpty else { return .ignored }
+            copy(selectedSnippets)
+            return .handled
+        }
+        .onKeyPress(.space) {
+            guard let cursor = selectionCursor ?? selectedSnippets.first?.persistentModelID
+            else { return .ignored }
+            previewingSnippetID = previewingSnippetID == cursor ? nil : cursor
+            return .handled
+        }
+        .onKeyPress(.escape) {
+            guard !selectedSnippetIDs.isEmpty else { return .ignored }
+            clearSelection()
+            return .handled
+        }
+        .onDeleteCommand { delete(selectedSnippets) }
+        .onCopyCommand {
+            let snippets = selectedSnippets
+            guard !snippets.isEmpty else { return [] }
+            recordCopies(snippets)
+            return [NSItemProvider(object: Clipboard.joined(snippets.map(\.content)) as NSString)]
+        }
+        .onCommand(#selector(NSResponder.selectAll(_:))) {
+            let all = visibleSnippets
+            selectedSnippetIDs = Set(all.map(\.persistentModelID))
+            selectionAnchor = all.first?.persistentModelID
+            selectionCursor = all.last?.persistentModelID
         }
         .navigationTitle(detailTitle)
         .toolbar {
@@ -343,29 +415,72 @@ struct ContentView: View {
     }
 
     private var snippetGrid: some View {
-        ScrollView {
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: cardMinWidth), spacing: 16)],
-                spacing: 16
-            ) {
-                ForEach(gridSnippets) { snippet in
-                    SnippetCard(
-                        snippet: snippet,
-                        sizeLevel: sizeLevel,
-                        draggedSnippet: $draggedSnippet,
-                        onEdit: { editingSnippet = snippet },
-                        onReorder: { reorderSnippetLocally($0, target: $1) },
-                        onCommit: commitSnippetOrder
-                    )
-                }
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: cardMinWidth), spacing: Self.gridSpacing)],
+                    spacing: Self.gridSpacing
+                ) {
+                    if #available(macOS 27, *) {
+                        ForEach(filteredSnippets) { snippet in
+                            card(for: snippet)
+                        }
+                        .reorderable()
+                    } else {
+                        ForEach(gridSnippets) { snippet in
+                            card(for: snippet)
+                        }
+                    }
 
-                // The add tile only appears in views you populate manually.
-                if isReorderable {
-                    AddSnippetCard(sizeLevel: sizeLevel) { isCreatingSnippet = true }
+                    // The add tile only appears in views you populate manually.
+                    if isReorderable {
+                        AddSnippetCard(sizeLevel: sizeLevel) { isCreatingSnippet = true }
+                    }
                 }
+                .modifier(FlatReorderContainer(isEnabled: isReorderable) { sources, target in
+                    moveSnippets(sources, before: target)
+                })
+                .padding(Self.gridPadding)
+                .modifier(ClearsSelectionOnTap(minHeight: gridSize.height) {
+                    clearSelection(); gridIsFocused = true
+                })
             }
-            .padding(20)
+            .onChange(of: scrollTarget) { _, id in scroll(proxy, to: id) }
         }
+    }
+
+    private static let gridSpacing: CGFloat = 16
+    private static let gridPadding: CGFloat = 20
+
+    /// One card, wired to the grid's selection, copy, and reorder state.
+    private func card(for snippet: Snippet) -> some View {
+        let id = snippet.persistentModelID
+        let targets = actionTargets(for: snippet)
+        return SnippetCard(
+            snippet: snippet,
+            sizeLevel: sizeLevel,
+            isSelected: selectedSnippetIDs.contains(id),
+            isSelectionFocused: gridIsFocused,
+            isFlashing: flashingSnippetIDs.contains(id),
+            isShowingPreview: Binding(get: { previewingSnippetID == id },
+                                      set: { previewingSnippetID = $0 ? id : nil }),
+            isDragging: !draggedSnippetIDs.isEmpty,
+            actionCount: targets.count,
+            allTargetsPinned: targets.allSatisfy(\.isPinned),
+            onClick: { click(snippet) },
+            onCopy: { copy(actionTargets(for: snippet)) },
+            onEdit: { editingSnippet = snippet },
+            onTogglePin: { togglePin(actionTargets(for: snippet)) },
+            onDelete: { delete(actionTargets(for: snippet)) },
+            onReorder: { reorderSnippetsLocally(to: snippet) },
+            onCommit: commitSnippetOrder
+        )
+    }
+
+    private func scroll(_ proxy: ScrollViewProxy, to id: PersistentIdentifier?) {
+        guard let id else { return }
+        withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) }
+        scrollTarget = nil
     }
 
     // MARK: - Grouped view
@@ -457,33 +572,50 @@ struct ContentView: View {
     }
 
     private var groupedSnippetView: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 20) {
-                ForEach(snippetGroups) { group in
-                    let collapsed = collapsedGroups.contains(group.id)
-                    VStack(alignment: .leading, spacing: 12) {
-                        groupHeader(group, collapsed: collapsed)
-                        if !collapsed {
-                            LazyVGrid(
-                                columns: [GridItem(.adaptive(minimum: cardMinWidth), spacing: 16)],
-                                spacing: 16
-                            ) {
-                                ForEach(group.snippets) { snippet in
-                                    SnippetCard(
-                                        snippet: snippet,
-                                        sizeLevel: sizeLevel,
-                                        draggedSnippet: $draggedSnippet,
-                                        onEdit: { editingSnippet = snippet },
-                                        onReorder: { reorderSnippetLocally($0, target: $1) },
-                                        onCommit: commitSnippetOrder
-                                    )
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 20) {
+                    ForEach(snippetGroups) { group in
+                        let collapsed = collapsedGroups.contains(group.id)
+                        VStack(alignment: .leading, spacing: 12) {
+                            groupHeader(group, collapsed: collapsed)
+                            if !collapsed {
+                                LazyVGrid(
+                                    columns: [GridItem(.adaptive(minimum: cardMinWidth),
+                                                       spacing: Self.gridSpacing)],
+                                    spacing: Self.gridSpacing
+                                ) {
+                                    if #available(macOS 27, *) {
+                                        ForEach(group.snippets) { snippet in
+                                            card(for: snippet)
+                                        }
+                                        .reorderable(collectionID: group.id)
+                                    } else {
+                                        ForEach(group.snippets) { snippet in
+                                            card(for: snippet)
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                .modifier(GroupedReorderContainer(isEnabled: isReorderable) { sources, target, group in
+                    // Dropping into another category's section refiles there.
+                    if settings.grouping == .category {
+                        let category = categories.first { "cat:\($0.name)" == group }
+                        if category != nil || group == "uncategorized" {
+                            refile(sources, to: category)
+                        }
+                    }
+                    moveSnippets(sources, before: target)
+                })
+                .padding(Self.gridPadding)
+                .modifier(ClearsSelectionOnTap(minHeight: gridSize.height) {
+                    clearSelection(); gridIsFocused = true
+                })
             }
-            .padding(20)
+            .onChange(of: scrollTarget) { _, id in scroll(proxy, to: id) }
         }
     }
 
@@ -599,7 +731,7 @@ struct ContentView: View {
     /// What the grid renders: straight from the query normally, and from the
     /// local mirror only while a drag is in progress.
     private var gridSnippets: [Snippet] {
-        (draggedSnippet == nil || displayOrder.isEmpty) ? filteredSnippets : displayOrder
+        (draggedSnippetIDs.isEmpty || displayOrder.isEmpty) ? filteredSnippets : displayOrder
     }
 
     // MARK: - Quick search
@@ -697,16 +829,7 @@ struct ContentView: View {
         .background {
             ClickOutsideSearchMonitor(onClickOutside: dismissQuickSearch)
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6))
-        }
-        // A broad ambient shadow plus tighter casts in both directions keeps
-        // the panel distinct even over Ditto's dark toolbar and card grid.
-        .shadow(color: .black.opacity(0.24), radius: 64, y: 10)
-        .shadow(color: .black.opacity(0.30), radius: 26, y: 2)
-        .shadow(color: .black.opacity(0.22), radius: 18, y: -8)
+        .glassEffect(.regular, in: .rect(cornerRadius: 18))
     }
 
     private func quickSearchRow(_ snippet: Snippet) -> some View {
@@ -742,7 +865,7 @@ struct ContentView: View {
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(selected ? accent.opacity(0.18) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -755,7 +878,7 @@ struct ContentView: View {
         quickSearchText = characters
         isQuickSearchPresented = true
         quickSearchSelection = SnippetSearch.results(for: characters, in: allSnippets).first?.persistentModelID
-        DispatchQueue.main.async { quickSearchIsFocused = true }
+        Task { quickSearchIsFocused = true }
     }
 
     private func dismissQuickSearch() {
@@ -774,15 +897,7 @@ struct ContentView: View {
 
     private func copyQuickSearchSelection() {
         guard let snippet = selectedQuickSearchSnippet else { return }
-        Clipboard.copy(snippet.content)
-
-        let undo = modelContext.undoManager
-        undo?.disableUndoRegistration()
-        snippet.copyCount += 1
-        snippet.lastCopiedAt = .now
-        try? modelContext.save()
-        undo?.enableUndoRegistration()
-
+        copy([snippet])
         dismissQuickSearch()
     }
 
@@ -821,14 +936,166 @@ struct ContentView: View {
         withAnimation(.bouncy) { banner = Banner(message: message, symbol: symbol, tint: tint) }
     }
 
+    // MARK: - Selection
+
+    /// The grid as laid out on screen: rows of cards, section by section, so
+    /// ↑/↓ land on the card visually above or below.
+    private var gridRows: [[Snippet]] {
+        let available = gridSize.width - Self.gridPadding * 2
+        let columns = max(1, Int((available + Self.gridSpacing) / (cardMinWidth + Self.gridSpacing)))
+        let sections = isGrouped
+            ? snippetGroups.filter { !collapsedGroups.contains($0.id) }.map(\.snippets)
+            : [gridSnippets]
+        return sections.flatMap { items in
+            stride(from: 0, to: items.count, by: columns).map {
+                Array(items[$0..<min($0 + columns, items.count)])
+            }
+        }
+    }
+
+    /// Every card currently on screen, in reading order.
+    private var visibleSnippets: [Snippet] { gridRows.flatMap { $0 } }
+
+    private var selectedSnippets: [Snippet] {
+        visibleSnippets.filter { selectedSnippetIDs.contains($0.persistentModelID) }
+    }
+
+    /// What a card's context menu acts on: the whole selection when the card
+    /// is part of a multi-selection, otherwise just that card.
+    private func actionTargets(for snippet: Snippet) -> [Snippet] {
+        let id = snippet.persistentModelID
+        guard selectedSnippetIDs.count > 1, selectedSnippetIDs.contains(id) else { return [snippet] }
+        return selectedSnippets
+    }
+
+    private func click(_ snippet: Snippet) {
+        let id = snippet.persistentModelID
+        // The click's own flags, not the keyboard's state by the time the
+        // button fires on mouse-up.
+        let modifiers = NSApp.currentEvent?.modifierFlags ?? NSEvent.modifierFlags
+        gridIsFocused = true
+        if modifiers.contains(.command) {
+            if selectedSnippetIDs.remove(id) == nil { selectedSnippetIDs.insert(id) }
+            selectionAnchor = id
+            selectionCursor = id
+        } else if modifiers.contains(.shift), let anchor = selectionAnchor {
+            selectRange(from: anchor, to: id)
+        } else {
+            selectedSnippetIDs = []
+            selectionAnchor = id
+            selectionCursor = id
+            copy([snippet])
+        }
+    }
+
+    private func select(_ snippet: Snippet) {
+        let id = snippet.persistentModelID
+        selectedSnippetIDs = [id]
+        selectionAnchor = id
+        selectionCursor = id
+    }
+
+    private func selectRange(from anchor: PersistentIdentifier, to end: PersistentIdentifier) {
+        let ids = visibleSnippets.map(\.persistentModelID)
+        guard let a = ids.firstIndex(of: anchor), let b = ids.firstIndex(of: end) else { return }
+        selectedSnippetIDs = Set(ids[min(a, b)...max(a, b)])
+        selectionCursor = end
+    }
+
+    private func clearSelection() {
+        selectedSnippetIDs = []
+        selectionAnchor = nil
+        selectionCursor = nil
+    }
+
+    private func moveSelection(_ key: KeyEquivalent, extending: Bool) {
+        let rows = gridRows
+        let all = rows.flatMap { $0 }
+        guard let first = all.first else { return }
+        guard let cursor = selectionCursor,
+              let row = rows.firstIndex(where: { $0.contains { $0.persistentModelID == cursor } }),
+              let column = rows[row].firstIndex(where: { $0.persistentModelID == cursor }),
+              let index = all.firstIndex(where: { $0.persistentModelID == cursor })
+        else {
+            select(first)
+            scrollTarget = first.persistentModelID
+            return
+        }
+
+        let target: Snippet?
+        switch key {
+        case .leftArrow:  target = index > 0 ? all[index - 1] : nil
+        case .rightArrow: target = index < all.count - 1 ? all[index + 1] : nil
+        case .upArrow:    target = row > 0 ? rows[row - 1][min(column, rows[row - 1].count - 1)] : nil
+        case .downArrow:
+            target = row < rows.count - 1 ? rows[row + 1][min(column, rows[row + 1].count - 1)] : nil
+        default:          target = nil
+        }
+        guard let target else { return }
+
+        if extending {
+            selectRange(from: selectionAnchor ?? cursor, to: target.persistentModelID)
+        } else {
+            select(target)
+        }
+        scrollTarget = target.persistentModelID
+    }
+
+    /// Copy one or more snippets, joined for pasting, and flash their cards.
+    private func copy(_ snippets: [Snippet]) {
+        guard !snippets.isEmpty else { return }
+        Clipboard.copy(Clipboard.joined(snippets.map(\.content)))
+        recordCopies(snippets)
+    }
+
+    private func recordCopies(_ snippets: [Snippet]) {
+        // Usage telemetry shouldn't land on the undo stack.
+        modelContext.withoutUndoRegistration {
+            for snippet in snippets {
+                snippet.copyCount += 1
+                snippet.lastCopiedAt = .now
+            }
+            try? modelContext.save()
+        }
+
+        let ids = Set(snippets.map(\.persistentModelID))
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { flashingSnippetIDs.formUnion(ids) }
+        Task {
+            try? await Task.sleep(for: .seconds(0.9))
+            withAnimation(.easeOut(duration: 0.25)) { flashingSnippetIDs.subtract(ids) }
+        }
+    }
+
+    private func togglePin(_ snippets: [Snippet]) {
+        let pin = !snippets.allSatisfy(\.isPinned)
+        for snippet in snippets { snippet.isPinned = pin }
+        try? modelContext.save()
+    }
+
+    /// Delete as one undoable step, then select the next card, as Finder does.
+    private func delete(_ snippets: [Snippet]) {
+        guard !snippets.isEmpty else { return }
+        let deleted = Set(snippets.map(\.persistentModelID))
+        let all = visibleSnippets
+        let lastIndex = all.lastIndex { deleted.contains($0.persistentModelID) } ?? 0
+        let next = all[lastIndex...].first { !deleted.contains($0.persistentModelID) }
+            ?? all[..<lastIndex].last { !deleted.contains($0.persistentModelID) }
+
+        modelContext.deleteUndoably(snippets: snippets, actionName: snippets.count == 1
+                                    ? "Delete Snippet" : "Delete \(snippets.count) Snippets")
+        if let next { select(next) } else { clearSelection() }
+    }
+
     // MARK: - Actions
 
     /// Handle a ditto:// link, then say what it did — a link that silently
     /// changes your library is a link you don't trust twice.
     private func openLink(_ url: URL) {
         let before = (try? modelContext.fetchCount(FetchDescriptor<Snippet>())) ?? 0
-        let handled = SnippetURL.handle(url, context: modelContext,
-                                        keepCategories: settings.linkCategoryBehavior == .keep)
+        let handled = modelContext.insertUndoably(actionName: "Add from Link") {
+            SnippetURL.handle(url, context: modelContext,
+                              keepCategories: settings.linkCategoryBehavior == .keep)
+        }
         let added = ((try? modelContext.fetchCount(FetchDescriptor<Snippet>())) ?? 0) - before
         if !handled {
             show("That link couldn't be read", symbol: "exclamationmark.triangle.fill", tint: .orange)
@@ -845,8 +1112,7 @@ struct ContentView: View {
         if selectedCategory?.persistentModelID == category.persistentModelID {
             selection = .all
         }
-        modelContext.delete(category)
-        try? modelContext.save()
+        modelContext.deleteUndoably(categories: [category], actionName: "Delete Category")
     }
 
     /// Duplicate a category and its snippets, then open the editor so the new
@@ -857,48 +1123,77 @@ struct ContentView: View {
                             symbolName: category.symbolName,
                             colorName: category.colorName,
                             sortIndex: nextCategoryIndex)
-        modelContext.insert(copy)
+        modelContext.insertUndoably(actionName: "Duplicate Category") {
+            modelContext.insert(copy)
 
-        var nextSnippetIndex = (allSnippets.map(\.sortIndex).max() ?? -1) + 1
-        for snippet in category.snippets.sorted(by: { $0.sortIndex < $1.sortIndex }) {
-            let snippetCopy = Snippet(title: snippet.title, content: snippet.content,
-                                      sortIndex: nextSnippetIndex, isPinned: snippet.isPinned,
-                                      category: copy)
-            modelContext.insert(snippetCopy)
-            nextSnippetIndex += 1
+            var nextSnippetIndex = (allSnippets.map(\.sortIndex).max() ?? -1) + 1
+            for snippet in category.snippets.sorted(by: { $0.sortIndex < $1.sortIndex }) {
+                let snippetCopy = Snippet(title: snippet.title, content: snippet.content,
+                                          sortIndex: nextSnippetIndex, isPinned: snippet.isPinned,
+                                          category: copy)
+                modelContext.insert(snippetCopy)
+                nextSnippetIndex += 1
+            }
         }
-
-        try? modelContext.save()
         editingCategory = copy
     }
 
-    /// Live reorder during a drag — mutates only the local copy so the grid
-    /// animates smoothly without the database re-sorting under the cursor.
-    private func reorderSnippetLocally(_ dragged: Snippet, target: Snippet) {
-        guard isReorderable, dragged.persistentModelID != target.persistentModelID else { return }
+    private func trackDrag(_ session: DragSession) {
+        switch session.phase {
+        case .initial, .active:
+            if draggedSnippetIDs.isEmpty {
+                draggedSnippetIDs = session.draggedItemIDs(for: PersistentIdentifier.self)
+            }
+        default:
+            draggedSnippetIDs = []
+        }
+    }
+
+    /// macOS 26 live reorder: moves the dragged cards, as a block, to the
+    /// card under the pointer. Only the local copy changes, so the grid
+    /// animates without the database re-sorting under the cursor.
+    private func reorderSnippetsLocally(to target: Snippet) {
+        let dragged = Set(draggedSnippetIDs)
+        guard isReorderable, !dragged.contains(target.persistentModelID) else { return }
         var ordered = gridSnippets
-        guard let from = ordered.firstIndex(where: { $0.persistentModelID == dragged.persistentModelID }),
-              let to = ordered.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) else { return }
+        let moving = IndexSet(ordered.indices.filter { dragged.contains(ordered[$0].persistentModelID) })
+        guard let from = moving.first,
+              let to = ordered.firstIndex(where: { $0.persistentModelID == target.persistentModelID })
+        else { return }
 
         // Moving toward a later position must insert *after* the target, hence
         // the +1; moving earlier inserts at the target. This makes dragging
         // down/right behave the same as up/left.
-        ordered.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
+        ordered.move(fromOffsets: moving, toOffset: to > from ? to + 1 : to)
 
         withAnimation(.snappy(duration: 0.18)) {
             displayOrder = ordered
         }
     }
 
-    /// On drop, persist the local order into `sortIndex`, preserving the slots
-    /// of any snippets filtered out of the current view.
+    /// macOS 26: on drop, persist the live order.
     private func commitSnippetOrder() {
-        draggedSnippet = nil
+        draggedSnippetIDs = []
         // A drop in a non-reorderable view (Frequently Used, Date Added
         // grouping) must not rewrite the manual order with that view's own.
-        guard isReorderable else { return }
-        let shown = displayOrder
-        guard !shown.isEmpty else { return }
+        guard isReorderable, !displayOrder.isEmpty else { return }
+        saveOrder(displayOrder)
+    }
+
+    /// macOS 27: a reorder container reported a move.
+    private func moveSnippets(_ ids: [PersistentIdentifier], before target: PersistentIdentifier?) {
+        var ordered = filteredSnippets
+        let moving = ordered.filter { ids.contains($0.persistentModelID) }
+        ordered.removeAll { ids.contains($0.persistentModelID) }
+        let index = target.flatMap { id in ordered.firstIndex { $0.persistentModelID == id } }
+            ?? ordered.endIndex
+        ordered.insert(contentsOf: moving, at: index)
+        withAnimation(.snappy(duration: 0.18)) { saveOrder(ordered) }
+    }
+
+    /// Write the shown order into `sortIndex`, keeping the slots of any
+    /// snippets filtered out of the current view.
+    private func saveOrder(_ shown: [Snippet]) {
         let shownIDs = Set(shown.map(\.persistentModelID))
         var iterator = shown.makeIterator()
 
@@ -927,37 +1222,37 @@ struct ContentView: View {
         try? modelContext.save()
     }
 
-    /// Reassign a snippet's category (nil = uncategorized).
-    private func move(_ snippet: Snippet, to category: Category?) {
-        snippet.category = category
+    /// Reassign dragged snippets' category (nil = uncategorized).
+    private func refile(_ ids: [PersistentIdentifier], to category: Category?) {
+        for snippet in allSnippets where ids.contains(snippet.persistentModelID) {
+            snippet.category = category
+        }
         try? modelContext.save()
+        draggedSnippetIDs = []
     }
 
-    private func runExport() {
-        let data: Data
+    private func exportLibrary() {
+        export(snippets: allSnippets, categories: categories,
+               filename: "Ditto Library \(Date.now.formatted(.dateTime.year().month().day()))")
+    }
+
+    /// Export a single category (with its snippets) to a JSON file.
+    private func exportCategory(_ category: Category) {
+        export(snippets: category.snippets, categories: [category],
+               filename: "Ditto - \(category.name)")
+    }
+
+    private func export(snippets: [Snippet], categories: [Category], filename: String) {
         do {
-            data = try exportDitto(snippets: allSnippets, categories: categories)
+            let data = try exportDitto(snippets: snippets, categories: categories)
+            pendingExport = PendingExport(document: DittoDocument(data: data), filename: filename)
         } catch {
             showAlert("Export failed", message: error.localizedDescription)
-            return
-        }
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "Ditto Library \(Date.now.formatted(.dateTime.year().month().day()))"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try data.write(to: url, options: .atomic)
-        } catch {
-            showAlert("Could not write file", message: error.localizedDescription)
         }
     }
 
     private func showAlert(_ title: String, message: String) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.runModal()
+        alertMessage = AlertMessage(title: title, message: message)
     }
 
     /// Copy a self-contained `ditto://import` link for this category and its
@@ -970,35 +1265,15 @@ struct ContentView: View {
         Clipboard.copy(link.absoluteString)
     }
 
-    /// Export a single category (with its snippets) to a JSON file.
-    private func exportCategory(_ category: Category) {
-        let data: Data
+    private func importLibrary(_ result: Result<URL, Error>) {
         do {
-            data = try exportDitto(snippets: category.snippets, categories: [category])
-        } catch {
-            showAlert("Export failed", message: error.localizedDescription)
-            return
-        }
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "Ditto - \(category.name)"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try data.write(to: url, options: .atomic)
-        } catch {
-            showAlert("Could not write file", message: error.localizedDescription)
-        }
-    }
-
-    private func runImport() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.json]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
+            let url = try result.get()
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             let data = try Data(contentsOf: url)
-            try importDitto(data: data, into: modelContext)
+            try modelContext.insertUndoably(actionName: "Import Library") {
+                try importDitto(data: data, into: modelContext)
+            }
         } catch {
             showAlert("Import failed", message: error.localizedDescription)
         }
@@ -1052,10 +1327,11 @@ private struct TypeToSearchMonitor: NSViewRepresentable {
                 guard event.modifierFlags.intersection(disallowed).isEmpty,
                       let characters = event.characters,
                       !characters.isEmpty,
+                      characters != " ",   // Space previews the selected card.
                       characters.unicodeScalars.allSatisfy({ $0.value >= 0x20 && $0.value != 0x7f })
                 else { return event }
 
-                DispatchQueue.main.async { self.onType(characters) }
+                Task { self.onType(characters) }
                 return nil
             }
         }
@@ -1065,7 +1341,7 @@ private struct TypeToSearchMonitor: NSViewRepresentable {
             monitor = nil
         }
 
-        deinit { uninstall() }
+        isolated deinit { uninstall() }
     }
 }
 
@@ -1107,7 +1383,7 @@ private struct ClickOutsideSearchMonitor: NSViewRepresentable {
                 let pointInPanel = view.convert(event.locationInWindow, from: nil)
                 guard !view.bounds.contains(pointInPanel) else { return event }
 
-                DispatchQueue.main.async { self.onClickOutside() }
+                Task { self.onClickOutside() }
                 // Treat search like a modal layer: the first outside click
                 // dismisses it without activating the control underneath.
                 return nil
@@ -1119,68 +1395,90 @@ private struct ClickOutsideSearchMonitor: NSViewRepresentable {
             monitor = nil
         }
 
-        deinit { uninstall() }
+        isolated deinit { uninstall() }
     }
 }
 
-/// A category row accepts a dropped snippet to refile it into this category.
-struct CategoryDropDelegate: DropDelegate {
-    let target: Category
-    @Binding var draggedSnippet: Snippet?
-    @Binding var highlightedCategoryID: PersistentIdentifier?
-    let onRefile: (Snippet) -> Void
+/// Stretches the grid's content to fill the scroll view, so a click on the
+/// empty space below the last card clears the selection too.
+private struct ClearsSelectionOnTap: ViewModifier {
+    let minHeight: CGFloat
+    let action: () -> Void
 
-    func validateDrop(info: DropInfo) -> Bool { draggedSnippet != nil }
-
-    func dropEntered(info: DropInfo) {
-        if draggedSnippet != nil {
-            highlightedCategoryID = target.persistentModelID
-        }
-    }
-
-    func dropExited(info: DropInfo) {
-        if highlightedCategoryID == target.persistentModelID {
-            highlightedCategoryID = nil
-        }
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        if let snippet = draggedSnippet {
-            onRefile(snippet)
-        }
-        draggedSnippet = nil
-        highlightedCategoryID = nil
-        return true
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .top)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: action)
     }
 }
 
-/// The "All Snippets" row accepts a dropped snippet to clear its category.
-struct UncategorizeDropDelegate: DropDelegate {
-    @Binding var draggedSnippet: Snippet?
-    @Binding var highlighted: Bool
-    let onUncategorize: (Snippet) -> Void
-
-    func validateDrop(info: DropInfo) -> Bool { draggedSnippet != nil }
-
-    func dropEntered(info: DropInfo) {
-        if draggedSnippet != nil { highlighted = true }
+extension View {
+    /// A sidebar row that takes cards dragged from the grid (but not text
+    /// from other apps) and hands over their IDs from the drag session.
+    func snippetDropTarget(isTargeted: Binding<Bool>,
+                           perform: @escaping ([PersistentIdentifier]) -> Void) -> some View {
+        self
+            .dropDestination(for: String.self) { _, session in
+                isTargeted.wrappedValue = false
+                perform(session.localSession?.draggedItemIDs(for: PersistentIdentifier.self) ?? [])
+            }
+            .dropConfiguration { session in
+                DropConfiguration(operation: session.localSession == nil ? .forbidden : .move)
+            }
+            .onDropSessionUpdated { session in
+                switch session.phase {
+                case .entering, .active: isTargeted.wrappedValue = session.localSession != nil
+                default:                 isTargeted.wrappedValue = false
+                }
+            }
     }
+}
 
-    func dropExited(info: DropInfo) { highlighted = false }
+/// macOS 27: the flat grid's reorder container. `target` is the card the
+/// moved ones now sit before, or nil for the end.
+private struct FlatReorderContainer: ViewModifier {
+    let isEnabled: Bool
+    let move: (_ sources: [PersistentIdentifier], _ target: PersistentIdentifier?) -> Void
 
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
+    func body(content: Content) -> some View {
+        if #available(macOS 27, *) {
+            content.reorderContainer(for: Snippet.self, isEnabled: isEnabled) { difference in
+                move(difference.sources, difference.destination.position.target)
+            }
+        } else {
+            content
+        }
     }
+}
 
-    func performDrop(info: DropInfo) -> Bool {
-        if let snippet = draggedSnippet { onUncategorize(snippet) }
-        draggedSnippet = nil
-        highlighted = false
-        return true
+/// macOS 27: the grouped grid's reorder container; each section is its own
+/// collection, identified by its group ID.
+private struct GroupedReorderContainer: ViewModifier {
+    let isEnabled: Bool
+    let move: (_ sources: [PersistentIdentifier], _ target: PersistentIdentifier?,
+               _ group: String) -> Void
+
+    func body(content: Content) -> some View {
+        if #available(macOS 27, *) {
+            content.reorderContainer(for: Snippet.self, in: String.self,
+                                     isEnabled: isEnabled) { difference in
+                move(difference.sources, difference.destination.position.target,
+                     difference.destination.collectionID)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+@available(macOS 27, *)
+private extension ReorderDifference.Destination.Position {
+    var target: ItemID? {
+        switch self {
+        case .before(let id): id
+        case .end:            nil
+        }
     }
 }
 
