@@ -18,8 +18,10 @@ enum DittoStore {
         #if DEBUG
         if DemoLibrary.isEnabled { return DemoLibrary.makeContainer(schema: schema) }
         #endif
-        let cloudConfig = ModelConfiguration(cloudKitDatabase: .automatic)
-        let localConfig = ModelConfiguration()
+        // The store lives in the App Group container so widgets can read it.
+        SharedStore.migrateLegacyStoreIfNeeded()
+        let cloudConfig = ModelConfiguration(url: SharedStore.storeURL, cloudKitDatabase: .automatic)
+        let localConfig = ModelConfiguration(url: SharedStore.storeURL)
         let container: ModelContainer
         do {
             container = try ModelContainer(for: schema, configurations: cloudConfig)
@@ -35,6 +37,7 @@ enum DittoStore {
         }
         SampleData.seedIfNeeded(container.mainContext)
         backfillUUIDs(container.mainContext)
+        WidgetSync.start()
         return container
     }()
 
