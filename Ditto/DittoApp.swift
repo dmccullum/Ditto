@@ -33,9 +33,44 @@ struct ZoomActions {
     var reset: () -> Void
 }
 
+/// What the Snippet menu acts on: the grid's selection, published by the
+/// main window while it's focused and no sheet or dialog is up.
+struct SnippetActions {
+    var count: Int
+    var allPinned: Bool
+    /// The http(s) link a single selected snippet holds.
+    var link: URL?
+    var copy: () -> Void
+    var preview: () -> Void
+    var edit: () -> Void
+    var duplicate: () -> Void
+    var togglePin: () -> Void
+    var copyShareLink: () -> Void
+    var delete: () -> Void
+}
+
+/// What the Category menu acts on: the category selected in the sidebar.
+struct CategoryActions {
+    var edit: () -> Void
+    var duplicate: () -> Void
+    var copyShareLink: () -> Void
+    var export: () -> Void
+    var delete: () -> Void
+}
+
+/// Edit → Find Snippets…: opens quick search, or focuses its field when
+/// it's already open.
+struct FindSnippetsAction {
+    var perform: () -> Void
+    func callAsFunction() { perform() }
+}
+
 extension FocusedValues {
     @Entry var libraryActions: LibraryActions?
     @Entry var zoomActions: ZoomActions?
+    @Entry var snippetActions: SnippetActions?
+    @Entry var categoryActions: CategoryActions?
+    @Entry var findSnippets: FindSnippetsAction?
 }
 
 @main
@@ -112,6 +147,9 @@ struct DittoCommands: Commands {
     @Environment(\.openWindow) private var openWindow
     @FocusedValue(\.libraryActions) private var libraryActions
     @FocusedValue(\.zoomActions) private var zoomActions
+    @FocusedValue(\.snippetActions) private var snippetActions
+    @FocusedValue(\.categoryActions) private var categoryActions
+    @FocusedValue(\.findSnippets) private var findSnippets
     var commands: AppCommands
     @Bindable var settings: AppSettings
 
@@ -142,6 +180,13 @@ struct DittoCommands: Commands {
                 .disabled(libraryActions == nil)
         }
 
+        // Quick search, under Edit after the system Find items.
+        CommandGroup(after: .textEditing) {
+            Button("Find Snippets…") { findSnippets?() }
+                .keyboardShortcut("f", modifiers: .command)
+                .disabled(findSnippets == nil)
+        }
+
         // Card size + grouping controls, added to the system View menu (rather
         // than a second "View" menu).
         CommandGroup(after: .sidebar) {
@@ -162,6 +207,46 @@ struct DittoCommands: Commands {
             }
             .pickerStyle(.inline)
             Divider()
+        }
+
+        // The grid selection. Same commands as a card's context menu.
+        CommandMenu("Snippet") {
+            let count = snippetActions?.count ?? 0
+            Button(count > 1 ? "Copy \(count) Snippets" : "Copy") { snippetActions?.copy() }
+                .disabled(count == 0)
+            Button("Preview") { snippetActions?.preview() }
+                .disabled(count != 1)
+            Button("Edit…") { snippetActions?.edit() }
+                .keyboardShortcut("i", modifiers: .command)
+                .disabled(count != 1)
+            Button("Duplicate") { snippetActions?.duplicate() }
+                .keyboardShortcut("d", modifiers: .command)
+                .disabled(count != 1)
+            Button(snippetActions?.allPinned == true ? "Unpin" : "Pin") { snippetActions?.togglePin() }
+                .disabled(count == 0)
+            Button("Copy Share Link") { snippetActions?.copyShareLink() }
+                .disabled(count != 1)
+            Button("Open Link") {
+                if let link = snippetActions?.link { NSWorkspace.shared.open(link) }
+            }
+            .disabled(snippetActions?.link == nil)
+            Divider()
+            Button(count > 1 ? "Delete \(count) Snippets" : "Delete Snippet") { snippetActions?.delete() }
+                .disabled(count == 0)
+        }
+
+        // The category selected in the sidebar. Same commands as its
+        // context menu.
+        CommandMenu("Category") {
+            Group {
+                Button("Edit Category…") { categoryActions?.edit() }
+                Button("Duplicate") { categoryActions?.duplicate() }
+                Button("Copy Share Link") { categoryActions?.copyShareLink() }
+                Button("Export Category…") { categoryActions?.export() }
+                Divider()
+                Button("Delete Category…") { categoryActions?.delete() }
+            }
+            .disabled(categoryActions == nil)
         }
 
         // Replace the default Help item with our in-app guide.

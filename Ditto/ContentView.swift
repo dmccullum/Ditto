@@ -115,6 +115,10 @@ struct ContentView: View {
     @State private var alertMessage: AlertMessage?
 
     var body: some View {
+        withCommands(windowContent)
+    }
+
+    private var windowContent: some View {
         NavigationSplitView {
             sidebar
         } detail: {
@@ -176,46 +180,56 @@ struct ContentView: View {
         } message: { alert in
             Text(alert.message)
         }
-        .onOpenURL { url in
-            openLink(url)
-            NSApp.activate()
-        }
-        .onAppear { modelContext.undoManager = undoManager }
-        .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }
-        .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
-            // Fires only when no text field consumes the paste, so normal
-            // ⌘V in the search/editor fields still works.
-            let text = NSPasteboard.general.string(forType: .string) ?? ""
-            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-            pasteDraft = PasteDraft(text: text)
-        }
-        .onChange(of: appCommands.createSnippet, initial: true) { _, create in
-            if create { isCreatingSnippet = true; appCommands.createSnippet = false }
-        }
-        .onChange(of: appCommands.createCategory, initial: true) { _, create in
-            if create { isCreatingCategory = true; appCommands.createCategory = false }
-        }
-        .focusedSceneValue(\.libraryActions, LibraryActions(
-            export: exportLibrary,
-            import: { isImporting = true }
-        ))
-        .focusedSceneValue(\.zoomActions, ZoomActions(
-            canZoomIn: sizeLevel < Self.maxSizeLevel,
-            canZoomOut: sizeLevel > Self.minSizeLevel,
-            zoomIn: { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1) },
-            zoomOut: { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) },
-            reset: { sizeLevel = 2 }
-        ))
-        .onChange(of: draggedSnippetIDs) { old, new in
-            // Snapshot the current order only when a drag begins. The rest of
-            // the time the grid renders straight from the query, so ordinary
-            // clicks don't pay for a mirror resync.
-            if old.isEmpty && !new.isEmpty { displayOrder = filteredSnippets }
-        }
-        .onChange(of: quickSearchText) { _, _ in
-            quickSearchSelection = quickSearchResults.first?.persistentModelID
-        }
-        .onChange(of: selection) { _, _ in clearSelection() }
+    }
+
+    /// The window's menu-command and event wiring, split from `body` to keep
+    /// it type-checkable.
+    private func withCommands(_ content: some View) -> some View {
+        content
+            .onOpenURL { url in
+                openLink(url)
+                NSApp.activate()
+            }
+            .onAppear { modelContext.undoManager = undoManager }
+            .onChange(of: undoManager) { _, manager in modelContext.undoManager = manager }
+            .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
+                // Fires only when no text field consumes the paste, so normal
+                // ⌘V in the search/editor fields still works.
+                let text = NSPasteboard.general.string(forType: .string) ?? ""
+                guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                pasteDraft = PasteDraft(text: text)
+            }
+            .onChange(of: appCommands.createSnippet, initial: true) { _, create in
+                if create { isCreatingSnippet = true; appCommands.createSnippet = false }
+            }
+            .onChange(of: appCommands.createCategory, initial: true) { _, create in
+                if create { isCreatingCategory = true; appCommands.createCategory = false }
+            }
+            .focusedSceneValue(\.libraryActions, LibraryActions(
+                export: exportLibrary,
+                import: { isImporting = true }
+            ))
+            .focusedSceneValue(\.snippetActions, isShowingModal ? nil : snippetActions)
+            .focusedSceneValue(\.categoryActions, isShowingModal ? nil : categoryActions)
+            .focusedSceneValue(\.findSnippets,
+                               isShowingModal ? nil : FindSnippetsAction(perform: findSnippets))
+            .focusedSceneValue(\.zoomActions, ZoomActions(
+                canZoomIn: sizeLevel < Self.maxSizeLevel,
+                canZoomOut: sizeLevel > Self.minSizeLevel,
+                zoomIn: { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1) },
+                zoomOut: { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) },
+                reset: { sizeLevel = 2 }
+            ))
+            .onChange(of: draggedSnippetIDs) { old, new in
+                // Snapshot the current order only when a drag begins. The rest of
+                // the time the grid renders straight from the query, so ordinary
+                // clicks don't pay for a mirror resync.
+                if old.isEmpty && !new.isEmpty { displayOrder = filteredSnippets }
+            }
+            .onChange(of: quickSearchText) { _, _ in
+                quickSearchSelection = quickSearchResults.first?.persistentModelID
+            }
+            .onChange(of: selection) { _, _ in clearSelection() }
     }
 
     // MARK: - Sidebar
@@ -253,9 +267,9 @@ struct ContentView: View {
                 Button {
                     isCreatingCategory = true
                 } label: {
-                    Image(systemName: "folder.badge.plus")
+                    Label("New Category", systemImage: "folder.badge.plus")
                 }
-                .help("New Category (⌘⇧N)")
+                .help("New Category")
             }
         }
     }
@@ -281,15 +295,13 @@ struct ContentView: View {
             }
         )) { refile($0, to: category) }
         .contextMenu {
-            Button("Edit…", systemImage: "pencil") { editingCategory = category }
-            Button("Duplicate", systemImage: "plus.square.on.square") { duplicateCategory(category) }
+            Button("Edit…") { editingCategory = category }
+            Button("Duplicate") { duplicateCategory(category) }
             Divider()
-            Button("Copy Share Link", systemImage: "link") { copyShareLink(for: category) }
-            Button("Export…", systemImage: "square.and.arrow.up") { exportCategory(category) }
+            Button("Copy Share Link") { copyShareLink(for: category) }
+            Button("Export…") { exportCategory(category) }
             Divider()
-            Button("Delete…", systemImage: "trash", role: .destructive) {
-                categoryPendingDeletion = category
-            }
+            Button("Delete…", role: .destructive) { categoryPendingDeletion = category }
         }
     }
 
@@ -375,7 +387,7 @@ struct ContentView: View {
                         }
                         .pickerStyle(.inline)
                     } label: {
-                        Image(systemName: settings.grouping == .none
+                        Label("Group By", systemImage: settings.grouping == .none
                               ? "rectangle.grid.1x2" : "rectangle.grid.1x2.fill")
                     }
                     .menuIndicator(.hidden)
@@ -383,34 +395,35 @@ struct ContentView: View {
                 }
 
                 Button { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) } label: {
-                    Image(systemName: "minus.magnifyingglass")
+                    Label("Zoom Out", systemImage: "minus.magnifyingglass")
                 }
                 .disabled(sizeLevel <= Self.minSizeLevel)
-                .help("Zoom Out (⌘–)")
+                .help("Zoom Out")
 
                 Button { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1) } label: {
-                    Image(systemName: "plus.magnifyingglass")
+                    Label("Zoom In", systemImage: "plus.magnifyingglass")
                 }
                 .disabled(sizeLevel >= Self.maxSizeLevel)
-                .help("Zoom In (⌘+)")
+                .help("Zoom In")
 
                 Button { isCreatingSnippet = true } label: {
-                    Image(systemName: "plus")
+                    Label("New Snippet", systemImage: "plus")
                 }
-                .help("New Snippet (⌘N)")
+                .help("New Snippet")
             }
 
             ToolbarSpacer(.fixed, placement: .primaryAction)
 
             ToolbarItem(placement: .primaryAction) {
+                // A click toggles search; ⌘F (Edit → Find Snippets…) only
+                // opens or refocuses it.
                 Button {
                     if isQuickSearchPresented { dismissQuickSearch() }
                     else { beginQuickSearch() }
                 } label: {
-                    Image(systemName: "magnifyingglass")
+                    Label("Find Snippets", systemImage: "magnifyingglass")
                 }
-                .keyboardShortcut("f", modifiers: .command)
-                .help("Quick Search (⌘F)")
+                .help("Find Snippets")
             }
 
         }
@@ -472,6 +485,8 @@ struct ContentView: View {
             onClick: { click(snippet) },
             onCopy: { copy(actionTargets(for: snippet)) },
             onEdit: { editingSnippet = snippet },
+            onDuplicate: { duplicate(snippet) },
+            onCopyShareLink: { copyShareLink(for: snippet) },
             onTogglePin: { togglePin(actionTargets(for: snippet)) },
             onDelete: { delete(actionTargets(for: snippet)) },
             onReorder: { reorderSnippetsLocally(to: snippet) },
@@ -938,6 +953,58 @@ struct ContentView: View {
         withAnimation(.bouncy) { banner = Banner(message: message, symbol: symbol, tint: tint) }
     }
 
+    // MARK: - Menu commands
+
+    /// A sheet, dialog, or file panel is up; the Snippet and Category menus
+    /// and Find Snippets stay disabled until it's gone.
+    private var isShowingModal: Bool {
+        editingSnippet != nil || isCreatingSnippet || editingCategory != nil ||
+        isCreatingCategory || pasteDraft != nil || categoryPendingDeletion != nil ||
+        pendingExport != nil || isImporting || alertMessage != nil
+    }
+
+    private var snippetActions: SnippetActions {
+        let targets = selectedSnippets
+        let single = targets.count == 1 ? targets.first : nil
+        return SnippetActions(
+            count: targets.count,
+            allPinned: !targets.isEmpty && targets.allSatisfy(\.isPinned),
+            link: single?.urlValue,
+            copy: { copy(targets) },
+            preview: {
+                guard let id = single?.persistentModelID else { return }
+                scrollTarget = id
+                previewingSnippetID = id
+            },
+            edit: { editingSnippet = single },
+            duplicate: { if let single { duplicate(single) } },
+            togglePin: { togglePin(targets) },
+            copyShareLink: { if let single { copyShareLink(for: single) } },
+            delete: { delete(targets) }
+        )
+    }
+
+    private var categoryActions: CategoryActions? {
+        guard let category = selectedCategory else { return nil }
+        return CategoryActions(
+            edit: { editingCategory = category },
+            duplicate: { duplicateCategory(category) },
+            copyShareLink: { copyShareLink(for: category) },
+            export: { exportCategory(category) },
+            delete: { categoryPendingDeletion = category }
+        )
+    }
+
+    /// Edit → Find Snippets… (⌘F): opens quick search, or puts the cursor
+    /// back in its field when it's already open.
+    private func findSnippets() {
+        if isQuickSearchPresented {
+            quickSearchIsFocused = true
+        } else {
+            beginQuickSearch()
+        }
+    }
+
     // MARK: - Selection
 
     /// The grid as laid out on screen: rows of cards, section by section, so
@@ -1117,6 +1184,25 @@ struct ContentView: View {
         modelContext.deleteUndoably(categories: [category], actionName: "Delete Category")
     }
 
+    /// Duplicate a snippet into the slot right after it.
+    private func duplicate(_ snippet: Snippet) {
+        modelContext.insertUndoably(actionName: "Duplicate Snippet") {
+            // Shift everything after the original down one slot so the copy's
+            // position right after it is deterministic (no sortIndex ties).
+            for other in allSnippets where other.sortIndex > snippet.sortIndex {
+                other.sortIndex += 1
+            }
+            let copy = Snippet(
+                title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
+                content: snippet.content,
+                sortIndex: snippet.sortIndex + 1,
+                isPinned: false,
+                category: snippet.category
+            )
+            modelContext.insert(copy)
+        }
+    }
+
     /// Duplicate a category and its snippets, then open the editor so the new
     /// copy can be renamed right away.
     private func duplicateCategory(_ category: Category) {
@@ -1262,6 +1348,17 @@ struct ContentView: View {
     private func copyShareLink(for category: Category) {
         guard let link = dittoImportLink(snippets: category.snippets, categories: [category]) else {
             showAlert("Couldn't create link", message: "This category couldn't be encoded.")
+            return
+        }
+        Clipboard.copy(link.absoluteString)
+    }
+
+    /// Copy a self-contained ditto://import link for this snippet (and its
+    /// category, so the recipient files it correctly) to the clipboard.
+    private func copyShareLink(for snippet: Snippet) {
+        let categories = snippet.category.map { [$0] } ?? []
+        guard let link = dittoImportLink(snippets: [snippet], categories: categories) else {
+            showAlert("Couldn't create link", message: "This snippet couldn't be encoded.")
             return
         }
         Clipboard.copy(link.absoluteString)

@@ -11,7 +11,6 @@ import SwiftData
 import UniformTypeIdentifiers
 
 struct SnippetCard: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.controlActiveState) private var controlActiveState
     let snippet: Snippet
     /// Card size level (0 = smallest … 4 = largest). The two smallest sizes
@@ -33,6 +32,8 @@ struct SnippetCard: View {
     var onClick: () -> Void
     var onCopy: () -> Void
     var onEdit: () -> Void
+    var onDuplicate: () -> Void
+    var onCopyShareLink: () -> Void
     var onTogglePin: () -> Void
     var onDelete: () -> Void
     /// macOS 26 only: the drag passed over this card / was dropped on it.
@@ -105,28 +106,29 @@ struct SnippetCard: View {
         .draggable(containerItemID: snippet.persistentModelID)
         .modifier(LegacyReorderDrop(isDragging: isDragging, onReorder: onReorder,
                                     onCommit: onCommit))
+        // Same commands, in the same order, as the Snippet menu.
         .contextMenu {
             let many = actionCount > 1
-            Button(many ? "Copy \(actionCount) Snippets" : "Copy", systemImage: "doc.on.doc",
-                   action: onCopy)
+            Button(many ? "Copy \(actionCount) Snippets" : "Copy", action: onCopy)
             if !many {
-                Button("Preview", systemImage: "eye") { isShowingPreview = true }
-                Button("Edit…", systemImage: "pencil", action: onEdit)
-                Button("Duplicate", systemImage: "plus.square.on.square", action: duplicate)
-                Button("Copy Share Link", systemImage: "link", action: copyShareLink)
-            }
-            Divider()
-            Button(allTargetsPinned ? "Unpin" : "Pin",
-                   systemImage: allTargetsPinned ? "pin.slash" : "pin",
-                   action: onTogglePin)
-            if !many, let url = snippet.urlValue {
-                Button("Open Link", systemImage: "safari") {
-                    NSWorkspace.shared.open(url)
+                if let url = snippet.urlValue {
+                    Button("Open Link") { NSWorkspace.shared.open(url) }
                 }
+                Button("Preview") { isShowingPreview = true }
             }
             Divider()
-            Button(many ? "Delete \(actionCount) Snippets" : "Delete", systemImage: "trash",
-                   role: .destructive, action: onDelete)
+            if !many {
+                Button("Edit…", action: onEdit)
+                Button("Duplicate", action: onDuplicate)
+            }
+            Button(allTargetsPinned ? "Unpin" : "Pin", action: onTogglePin)
+            if !many {
+                Divider()
+                Button("Copy Share Link", action: onCopyShareLink)
+            }
+            Divider()
+            Button(many ? "Delete \(actionCount) Snippets" : "Delete", role: .destructive,
+                   action: onDelete)
         }
         .popover(isPresented: $isShowingPreview, arrowEdge: .bottom) {
             SnippetPreview(
@@ -213,34 +215,6 @@ struct SnippetCard: View {
             endPoint: .bottomTrailing
         )
         .background(.background)
-    }
-
-    private func duplicate() {
-        modelContext.insertUndoably(actionName: "Duplicate Snippet") {
-            // Shift everything after the original down one slot so the copy's
-            // position right after it is deterministic (no sortIndex ties).
-            let all = (try? modelContext.fetch(FetchDescriptor<Snippet>())) ?? []
-            for other in all where other.sortIndex > snippet.sortIndex {
-                other.sortIndex += 1
-            }
-            let copy = Snippet(
-                title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
-                content: snippet.content,
-                sortIndex: snippet.sortIndex + 1,
-                isPinned: false,
-                category: snippet.category
-            )
-            modelContext.insert(copy)
-        }
-    }
-
-    /// Copy a self-contained ditto://import link for this snippet (and its
-    /// category, so the recipient files it correctly) to the clipboard.
-    private func copyShareLink() {
-        let categories = snippet.category.map { [$0] } ?? []
-        if let link = dittoImportLink(snippets: [snippet], categories: categories) {
-            Clipboard.copy(link.absoluteString)
-        }
     }
 }
 
