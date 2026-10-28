@@ -141,6 +141,7 @@ struct SnippetEditor: View {
             snippet.title = title
             snippet.content = content
             snippet.category = selectedCategory
+            modelContext.undoManager?.setActionName("Edit Snippet")
         } else {
             modelContext.insertUndoably(actionName: "New Snippet") {
                 modelContext.insert(Snippet(title: title, content: content,

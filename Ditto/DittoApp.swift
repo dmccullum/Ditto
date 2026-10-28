@@ -103,6 +103,8 @@ struct DittoApp: App {
         .modelContainer(container)
         .commands {
             DittoCommands(commands: commands, helpNavigation: helpNavigation, settings: settings)
+            // Undo / Redo titled with the step's name (“Undo Delete Snippet”).
+            UndoCommands()
         }
 
         // The always-available menu bar dropdown for quick copying.

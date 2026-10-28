@@ -1130,6 +1130,7 @@ struct ContentView: View {
     private func togglePin(_ snippets: [Snippet]) {
         let pin = !snippets.allSatisfy(\.isPinned)
         for snippet in snippets { snippet.isPinned = pin }
+        modelContext.undoManager?.setActionName(pin ? "Pin" : "Unpin")
         try? modelContext.save()
     }
 
@@ -1289,6 +1290,7 @@ struct ContentView: View {
         for (index, snippet) in newGlobal.enumerated() where snippet.sortIndex != index {
             snippet.sortIndex = index
         }
+        modelContext.undoManager?.setActionName("Reorder Snippets")
         try? modelContext.save()
     }
 
@@ -1299,6 +1301,7 @@ struct ContentView: View {
         for (index, category) in ordered.enumerated() where category.sortIndex != index {
             category.sortIndex = index
         }
+        modelContext.undoManager?.setActionName("Reorder Categories")
         try? modelContext.save()
     }
 
@@ -1307,6 +1310,8 @@ struct ContentView: View {
         for snippet in allSnippets where ids.contains(snippet.persistentModelID) {
             snippet.category = category
         }
+        modelContext.undoManager?.setActionName(
+            "Move to \(category.map { "“\($0.name)”" } ?? "Uncategorized")")
         try? modelContext.save()
         draggedSnippetIDs = []
     }

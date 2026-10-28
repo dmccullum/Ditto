@@ -131,6 +131,7 @@ struct CategoryEditor: View {
             category.name = trimmed
             category.symbolName = symbolName
             category.colorName = colorName
+            modelContext.undoManager?.setActionName("Edit Category")
         } else {
             let nextIndex = (allCategories.map(\.sortIndex).max() ?? -1) + 1
             modelContext.insertUndoably(actionName: "New Category") {
