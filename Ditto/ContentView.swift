@@ -10,20 +10,13 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 import AppKit
+import DMKit
 
 /// What's selected in the sidebar.
 enum SidebarSelection: Hashable {
     case all
     case frequent
     case category(Category)
-}
-
-/// A brief confirmation shown at the top of the window.
-struct Banner: Identifiable, Equatable {
-    let id = UUID()
-    let message: String
-    let symbol: String
-    let tint: Color
 }
 
 /// A pending Save dialog: the JSON to write and the suggested file name.
@@ -110,7 +103,7 @@ struct ContentView: View {
     @FocusState private var gridIsFocused: Bool
 
     @State private var categoryPendingDeletion: Category?
-    @State private var banner: Banner?
+    @State private var status: StatusMessage?
     @State private var pendingExport: PendingExport?
     @State private var isImporting = false
     @State private var alertMessage: AlertMessage?
@@ -126,7 +119,7 @@ struct ContentView: View {
             // Wide enough for quick search (520 pt) and the largest cards.
             detail
                 .frame(minWidth: 540, minHeight: 360)
-                .overlay(alignment: .top) { bannerView }
+                .statusCapsule($status)
                 .overlay(alignment: .top) {
                     if isQuickSearchPresented {
                         quickSearchPanel
@@ -940,37 +933,10 @@ struct ContentView: View {
         dismissQuickSearch()
     }
 
-    @ViewBuilder
-    private var bannerView: some View {
-        if let banner {
-            Label(banner.message, systemImage: banner.symbol)
-                .font(.callout.weight(.semibold))
-                .fontDesign(.rounded)
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(banner.tint)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 9)
-                .floatingGlass(in: Capsule())
-                .padding(.top, 12)
-                .transition(dropDownTransition)
-                .onTapGesture { withAnimation { self.banner = nil } }
-                .task(id: banner.id) {
-                    try? await Task.sleep(for: .seconds(2.5))
-                    withAnimation(.smooth) { self.banner = nil }
-                }
-        }
-    }
-
-    private func show(_ message: String, symbol: String, tint: Color) {
-        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .bouncy) {
-            banner = Banner(message: message, symbol: symbol, tint: tint)
-        }
-    }
-
-    /// The banner and quick search slide down from the top, or just fade
-    /// in with Reduce Motion.
+    /// Quick search slides down from the top, or just fades in with Reduce
+    /// Motion.
     private var dropDownTransition: AnyTransition {
-        reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity)
+        DMMotion.transition(.move(edge: .top).combined(with: .opacity), reduceMotion: reduceMotion)
     }
 
     // MARK: - Menu commands
@@ -1193,13 +1159,13 @@ struct ContentView: View {
         }
         let added = ((try? modelContext.fetchCount(FetchDescriptor<Snippet>())) ?? 0) - before
         if !handled {
-            show("That link couldn’t be read", symbol: "exclamationmark.triangle.fill", tint: .orange)
+            showAlert("Couldn’t Add from Link",
+                      message: "Ditto can’t read this link. Check that it’s a complete ditto://add or ditto://import link.")
         } else if added == 0 {
-            show("Already in your library", symbol: "checkmark.circle.fill", tint: .secondary)
+            status = StatusMessage("Already in Your Library")
         } else {
             selection = .all
-            show(added == 1 ? "Added 1 snippet" : "Added \(added) snippets",
-                 symbol: "checkmark.circle.fill", tint: .green)
+            status = StatusMessage(added == 1 ? "Added 1 Snippet" : "Added \(added) Snippets")
         }
     }
 
@@ -1539,28 +1505,7 @@ private struct ClearsSelectionOnTap: ViewModifier {
     }
 }
 
-/// Liquid Glass for a control floating over the grid, or an opaque fill with
-/// a hairline when Reduce Transparency is on.
-private struct FloatingGlass<S: InsettableShape>: ViewModifier {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    let shape: S
-
-    func body(content: Content) -> some View {
-        if reduceTransparency {
-            content
-                .background(Color(nsColor: .windowBackgroundColor), in: shape)
-                .overlay(shape.strokeBorder(Color(nsColor: .separatorColor)))
-        } else {
-            content.glassEffect(.regular, in: shape)
-        }
-    }
-}
-
 extension View {
-    fileprivate func floatingGlass(in shape: some InsettableShape) -> some View {
-        modifier(FloatingGlass(shape: shape))
-    }
-
     /// A sidebar row that takes cards dragged from the grid (but not text
     /// from other apps) and hands over their IDs from the drag session.
     func snippetDropTarget(isTargeted: Binding<Bool>,
