@@ -146,10 +146,11 @@ struct SnippetEditor: View {
             snippet.content = content
             snippet.category = selectedCategory
         } else {
-            let newSnippet = Snippet(title: title, content: content,
-                                     sortIndex: Snippet.topSortIndex(in: modelContext),
-                                     category: selectedCategory)
-            modelContext.insert(newSnippet)
+            modelContext.insertUndoably(actionName: "New Snippet") {
+                modelContext.insert(Snippet(title: title, content: content,
+                                            sortIndex: Snippet.topSortIndex(in: modelContext),
+                                            category: selectedCategory))
+            }
         }
         try? modelContext.save()
         dismiss()

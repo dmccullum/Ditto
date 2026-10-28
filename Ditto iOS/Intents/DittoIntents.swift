@@ -221,8 +221,12 @@ struct CreateSnippetIntent: AppIntent {
         let snippet = Snippet(title: name ?? "", content: text,
                               sortIndex: Snippet.topSortIndex(in: DittoIntents.context),
                               category: category)
-        DittoIntents.context.insert(snippet)
-        try DittoIntents.context.save()
+        // Kept off the app's undo stack: shaking to undo shouldn't remove
+        // something saved from Siri or Shortcuts.
+        try DittoIntents.context.withoutUndoRegistration {
+            DittoIntents.context.insert(snippet)
+            try DittoIntents.context.save()
+        }
         await DittoSpotlight.refresh()
         return .result(value: SnippetEntity(snippet), dialog: "Saved “\(snippet.displayTitle)”.")
     }

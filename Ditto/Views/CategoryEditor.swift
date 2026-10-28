@@ -124,8 +124,10 @@ struct CategoryEditor: View {
             category.colorName = colorName
         } else {
             let nextIndex = (allCategories.map(\.sortIndex).max() ?? -1) + 1
-            let newCategory = Category(name: trimmed, symbolName: symbolName, colorName: colorName, sortIndex: nextIndex)
-            modelContext.insert(newCategory)
+            modelContext.insertUndoably(actionName: "New Category") {
+                modelContext.insert(Category(name: trimmed, symbolName: symbolName,
+                                             colorName: colorName, sortIndex: nextIndex))
+            }
         }
         try? modelContext.save()
         dismiss()

@@ -304,7 +304,6 @@ struct SnippetListView: View {
                     .foregroundStyle(.secondary)
                 Button("Undo") {
                     modelContext.undoManager?.undo()
-                    try? modelContext.save()
                     withAnimation(.snappy) { self.deletedTitle = nil }
                 }
                 .fontWeight(.semibold)
@@ -340,27 +339,27 @@ struct SnippetListView: View {
 
     private func delete(_ snippet: Snippet) {
         let title = snippet.displayTitle
-        modelContext.delete(snippet)
-        try? modelContext.save()
+        modelContext.deleteUndoably(snippets: [snippet], actionName: "Delete Snippet")
         deleteCount += 1
         withAnimation(.snappy) { deletedTitle = title }
     }
 
     private func duplicate(_ snippet: Snippet) {
-        // Shift everything after the original down one slot so the copy's
-        // position right after it is deterministic (no sortIndex ties).
-        for other in allSnippets where other.sortIndex > snippet.sortIndex {
-            other.sortIndex += 1
+        modelContext.insertUndoably(actionName: "Duplicate Snippet") {
+            // Shift everything after the original down one slot so the copy's
+            // position right after it is deterministic (no sortIndex ties).
+            for other in allSnippets where other.sortIndex > snippet.sortIndex {
+                other.sortIndex += 1
+            }
+            let copy = Snippet(
+                title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
+                content: snippet.content,
+                sortIndex: snippet.sortIndex + 1,
+                isPinned: false,
+                category: snippet.category
+            )
+            modelContext.insert(copy)
         }
-        let copy = Snippet(
-            title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
-            content: snippet.content,
-            sortIndex: snippet.sortIndex + 1,
-            isPinned: false,
-            category: snippet.category
-        )
-        modelContext.insert(copy)
-        try? modelContext.save()
     }
 
     private func copy(_ snippet: Snippet) {

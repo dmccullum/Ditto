@@ -182,7 +182,9 @@ struct SettingsView: View {
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             let data = try Data(contentsOf: url)
             let before = snippets.count
-            try importDitto(data: data, into: modelContext)
+            try modelContext.insertUndoably(actionName: "Import Library") {
+                try importDitto(data: data, into: modelContext)
+            }
             let added = ((try? modelContext.fetchCount(FetchDescriptor<Snippet>())) ?? before) - before
             importMessage = switch added {
             case 0:  "Everything in that file is already in your library."

@@ -316,8 +316,10 @@ struct ContentView: View {
     /// changes your library is a link you don't trust twice.
     private func openLink(_ url: URL) {
         let before = (try? modelContext.fetchCount(FetchDescriptor<Snippet>())) ?? 0
-        let handled = SnippetURL.handle(url, context: modelContext,
-                                        keepCategories: settings.linkCategoryBehavior == .keep)
+        let handled = modelContext.insertUndoably(actionName: "Add from Link") {
+            SnippetURL.handle(url, context: modelContext,
+                              keepCategories: settings.linkCategoryBehavior == .keep)
+        }
         let added = ((try? modelContext.fetchCount(FetchDescriptor<Snippet>())) ?? 0) - before
         if !handled {
             show("That link couldn't be read", symbol: "exclamationmark.triangle.fill", tint: .orange)
@@ -335,8 +337,7 @@ struct ContentView: View {
         if selectedCategory?.persistentModelID == category.persistentModelID {
             selection = .all
         }
-        modelContext.delete(category)
-        try? modelContext.save()
+        modelContext.deleteUndoably(categories: [category], actionName: "Delete Category")
     }
 
     private func moveCategories(from source: IndexSet, to destination: Int) {
@@ -355,21 +356,21 @@ struct ContentView: View {
                             symbolName: category.symbolName,
                             colorName: category.colorName,
                             sortIndex: nextCategoryIndex)
-        modelContext.insert(copy)
+        modelContext.insertUndoably(actionName: "Duplicate Category") {
+            modelContext.insert(copy)
 
-        var nextSnippetIndex = (allSnippets.map(\.sortIndex).max() ?? -1) + 1
-        let members = allSnippets
-            .filter { $0.category?.persistentModelID == category.persistentModelID }
-            .sorted { $0.sortIndex < $1.sortIndex }
-        for snippet in members {
-            let snippetCopy = Snippet(title: snippet.title, content: snippet.content,
-                                      sortIndex: nextSnippetIndex, isPinned: snippet.isPinned,
-                                      category: copy)
-            modelContext.insert(snippetCopy)
-            nextSnippetIndex += 1
+            var nextSnippetIndex = (allSnippets.map(\.sortIndex).max() ?? -1) + 1
+            let members = allSnippets
+                .filter { $0.category?.persistentModelID == category.persistentModelID }
+                .sorted { $0.sortIndex < $1.sortIndex }
+            for snippet in members {
+                let snippetCopy = Snippet(title: snippet.title, content: snippet.content,
+                                          sortIndex: nextSnippetIndex, isPinned: snippet.isPinned,
+                                          category: copy)
+                modelContext.insert(snippetCopy)
+                nextSnippetIndex += 1
+            }
         }
-
-        try? modelContext.save()
         selection = .category(copy)
         editingCategory = copy
     }

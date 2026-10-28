@@ -74,8 +74,7 @@ struct CategoryEditorView: View {
                 }
             }
             .confirmDeletion(of: $isConfirmingDelete) { target in
-                modelContext.delete(target)
-                try? modelContext.save()
+                modelContext.deleteUndoably(categories: [target], actionName: "Delete Category")
                 dismiss()
             }
             .sensoryFeedback(.selection, trigger: colorName)
@@ -173,8 +172,10 @@ struct CategoryEditorView: View {
             category.colorName = colorName
         } else {
             let nextIndex = (allCategories.map(\.sortIndex).max() ?? -1) + 1
-            modelContext.insert(Category(name: trimmedName, symbolName: symbolName,
-                                         colorName: colorName, sortIndex: nextIndex))
+            modelContext.insertUndoably(actionName: "New Category") {
+                modelContext.insert(Category(name: trimmedName, symbolName: symbolName,
+                                             colorName: colorName, sortIndex: nextIndex))
+            }
         }
         try? modelContext.save()
         dismiss()
