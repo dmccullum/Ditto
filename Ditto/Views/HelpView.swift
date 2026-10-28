@@ -36,6 +36,7 @@ struct HelpView: View {
 
                 section("Menu Bar", icon: "menubar.arrow.up.rectangle", tint: .purple) {
                     bullet("Click the Ditto icon in the menu bar for instant search-and-copy from anywhere.")
+                    bullet("Type to search, use ↑ and ↓ to pick a snippet, and press Return to copy it. Esc clears the search.")
                     bullet("Copy any text elsewhere, then paste into Ditto's window to start a new snippet from it.")
                 }
 
@@ -61,7 +62,7 @@ struct HelpView: View {
                 section("Keyboard Shortcuts", icon: "keyboard.fill", tint: .pink) {
                     shortcut("⌘N", "New snippet")
                     shortcut("⇧⌘N", "New category")
-                    shortcut("⌘F", "Quick search")
+                    shortcut("⌘F", "Find snippets")
                     shortcut("⌘↩", "Show search result in list")
                     shortcut("⌘+ / ⌘–", "Zoom in / out")
                     shortcut("⌘0", "Default card size")
@@ -69,6 +70,8 @@ struct HelpView: View {
                     shortcut("↑ ↓ ← →", "Move the card selection (⇧ extends it)")
                     shortcut("↩", "Copy the selected cards")
                     shortcut("Space", "Preview the selected card")
+                    shortcut("⌘I", "Edit the selected snippet")
+                    shortcut("⌘D", "Duplicate the selected snippet")
                     shortcut("⌘A", "Select all cards")
                     shortcut("⌫", "Delete the selected cards")
                     shortcut("⌘Z / ⇧⌘Z", "Undo / redo")
