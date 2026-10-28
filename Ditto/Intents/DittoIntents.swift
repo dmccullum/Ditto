@@ -273,16 +273,76 @@ struct DittoShortcuts: AppShortcutsProvider {
 // MARK: - Spotlight
 
 enum DittoSpotlight {
-    /// Re-donate the whole library to Spotlight. Delete-then-index keeps
-    /// removed snippets out, and a full pass is cheap at personal-library
-    /// scale. Runs at launch, after intent-driven creates, and whenever the
-    /// app loses focus, so in-app edits follow shortly after.
-    @MainActor
-    static func refresh() async {
-        guard !DittoStore.isDemo else { return }
-        guard let snippets = try? DittoIntents.allSnippets() else { return }
+    /// What Spotlight shows for each snippet as of the last index.
+    private struct IndexedSnippet: Equatable {
+        let id: UUID
+        let title: String
+        let preview: String
+        let categoryName: String?
+    }
+
+    @MainActor private static var lastIndexed: [IndexedSnippet]?
+
+    /// Re-donate the whole library to Spotlight when anything it shows has
+    /// changed since the last pass. Delete-then-index keeps removed snippets
+    /// out, and a full pass is cheap at personal-library scale. Returns
+    /// whether it re-indexed.
+    @MainActor @discardableResult
+    static func refresh() async -> Bool {
+        guard !DittoStore.isDemo else { return false }
+        guard let snippets = try? DittoIntents.allSnippets() else { return false }
+        let entities = snippets.map(SnippetEntity.init)
+        let indexed = entities.map {
+            IndexedSnippet(id: $0.id, title: $0.title, preview: $0.preview,
+                           categoryName: $0.categoryName)
+        }
+        // Copy counts, pins, and reordering save too, but Spotlight shows
+        // none of them.
+        guard indexed != lastIndexed else { return false }
+        lastIndexed = indexed
         let index = CSSearchableIndex.default()
         try? await index.deleteAllSearchableItems()
-        try? await index.indexAppEntities(snippets.map(SnippetEntity.init))
+        try? await index.indexAppEntities(entities)
+        return true
+    }
+}
+
+/// Keeps Spotlight and the Shortcuts snippet vocabulary current: once at
+/// launch, then after the app saves or loses focus, once things settle —
+/// the same way WidgetSync reloads widgets.
+@MainActor
+enum SystemIndexSync {
+    private static var observers: [any NSObjectProtocol] = []
+    private static var pendingRefresh: Task<Void, Never>?
+
+    static func start() {
+        guard observers.isEmpty else { return }
+        Task { await refresh() }
+        // Saves cover in-app edits; losing focus also catches changes that
+        // arrived through iCloud while Ditto was open.
+        for name in [ModelContext.didSave, NSApplication.didResignActiveNotification] {
+            observers.append(NotificationCenter.default.addObserver(
+                forName: name, object: nil, queue: .main
+            ) { _ in
+                MainActor.assumeIsolated { scheduleRefresh() }
+            })
+        }
+    }
+
+    /// Typing in the editor saves in bursts; refresh once they settle.
+    private static func scheduleRefresh() {
+        pendingRefresh?.cancel()
+        pendingRefresh = Task {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            await refresh()
+        }
+    }
+
+    private static func refresh() async {
+        guard !DittoStore.isDemo else { return }
+        if await DittoSpotlight.refresh() {
+            DittoShortcuts.updateAppShortcutParameters()
+        }
     }
 }

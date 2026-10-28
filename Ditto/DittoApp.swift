@@ -82,22 +82,9 @@ struct DittoApp: App {
     @State private var settings = AppSettings()
 
     init() {
-        // Keep Spotlight and the Shortcuts snippet vocabulary in sync.
-        Task { await Self.refreshSystemIndexes() }
-        // Ditto tends to stay open for days, so also re-index whenever it
-        // loses focus — in-app edits reach Spotlight and Shortcuts without
-        // waiting for the next launch.
-        NotificationCenter.default.addObserver(
-            forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
-        ) { _ in
-            Task { await Self.refreshSystemIndexes() }
-        }
-    }
-
-    private static func refreshSystemIndexes() async {
-        guard !DittoStore.isDemo else { return }
-        await DittoSpotlight.refresh()
-        DittoShortcuts.updateAppShortcutParameters()
+        // Keep Spotlight and the Shortcuts snippet vocabulary in sync with
+        // the library, including in-app edits while Ditto stays open.
+        SystemIndexSync.start()
     }
 
     var body: some Scene {
