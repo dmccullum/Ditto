@@ -169,7 +169,7 @@ struct ContentView: View {
             defaultFilename: pendingExport?.filename
         ) { result in
             if case .failure(let error) = result {
-                showAlert("Could not write file", message: error.localizedDescription)
+                showAlert("Couldn’t Save Export", message: error.localizedDescription)
             }
         }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
@@ -673,7 +673,16 @@ struct ContentView: View {
         case .frequent:
             ContentUnavailableView("Nothing Frequent Yet", systemImage: "flame",
                 description: Text("Snippets you copy often will show up here."))
-        default:
+        case .category(let category):
+            ContentUnavailableView {
+                Label("No Snippets in “\(category.name)”", systemImage: category.symbolName)
+            } description: {
+                Text("Add a snippet here, or drag cards onto “\(category.name)” in the sidebar.")
+            } actions: {
+                Button("New Snippet", systemImage: "plus") { isCreatingSnippet = true }
+                    .buttonStyle(.borderedProminent)
+            }
+        case .all:
             ContentUnavailableView {
                 Label("No Snippets Yet", systemImage: "sparkles")
             } description: {
@@ -834,11 +843,11 @@ struct ContentView: View {
 
             Divider()
             HStack(spacing: 14) {
-                Label("navigate", systemImage: "arrow.up.arrow.down")
-                Label("copy", systemImage: "return")
-                Text("⌘↩ show in list")
+                Text("↑↓ Navigate")
+                Text("↩ Copy")
+                Text("⌘↩ Show in List")
                 Spacer()
-                Text("Esc to close")
+                Text("esc Close")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -1178,7 +1187,7 @@ struct ContentView: View {
         }
         let added = ((try? modelContext.fetchCount(FetchDescriptor<Snippet>())) ?? 0) - before
         if !handled {
-            show("That link couldn't be read", symbol: "exclamationmark.triangle.fill", tint: .orange)
+            show("That link couldn’t be read", symbol: "exclamationmark.triangle.fill", tint: .orange)
         } else if added == 0 {
             show("Already in your library", symbol: "checkmark.circle.fill", tint: .secondary)
         } else {
@@ -1346,7 +1355,7 @@ struct ContentView: View {
             let data = try exportDitto(snippets: snippets, categories: categories)
             pendingExport = PendingExport(document: DittoDocument(data: data), filename: filename)
         } catch {
-            showAlert("Export failed", message: error.localizedDescription)
+            showAlert("Couldn’t Export", message: error.localizedDescription)
         }
     }
 
@@ -1358,7 +1367,7 @@ struct ContentView: View {
     /// snippets to the clipboard — paste it anywhere (email, intranet) to share.
     private func copyShareLink(for category: Category) {
         guard let link = dittoImportLink(snippets: category.snippets, categories: [category]) else {
-            showAlert("Couldn't create link", message: "This category couldn't be encoded.")
+            showAlert("Couldn’t Create Share Link", message: "This category couldn’t be encoded.")
             return
         }
         Clipboard.copy(link.absoluteString)
@@ -1369,7 +1378,7 @@ struct ContentView: View {
     private func copyShareLink(for snippet: Snippet) {
         let categories = snippet.category.map { [$0] } ?? []
         guard let link = dittoImportLink(snippets: [snippet], categories: categories) else {
-            showAlert("Couldn't create link", message: "This snippet couldn't be encoded.")
+            showAlert("Couldn’t Create Share Link", message: "This snippet couldn’t be encoded.")
             return
         }
         Clipboard.copy(link.absoluteString)
@@ -1385,7 +1394,7 @@ struct ContentView: View {
                 try importDitto(data: data, into: modelContext)
             }
         } catch {
-            showAlert("Import failed", message: error.localizedDescription)
+            showAlert("Couldn’t Import Library", message: error.localizedDescription)
         }
     }
 }

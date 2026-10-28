@@ -20,7 +20,11 @@ struct SnippetListWidget: Widget {
                 .containerBackground(.background, for: .widget)
         }
         .configurationDisplayName("Snippets")
+        #if os(macOS)
+        .description("Copy a snippet with one click.")
+        #else
         .description("Copy a snippet with one tap.")
+        #endif
         .supportedFamilies(Self.families)
     }
 

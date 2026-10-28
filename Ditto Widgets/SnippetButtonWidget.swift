@@ -19,7 +19,11 @@ struct SnippetButtonWidget: Widget {
                 .containerBackground(.background, for: .widget)
         }
         .configurationDisplayName("Copy Snippet")
+        #if os(macOS)
+        .description("Copy one snippet with a click.")
+        #else
         .description("Copy one snippet with a tap.")
+        #endif
         .supportedFamilies(Self.families)
     }
 
@@ -85,6 +89,12 @@ struct SnippetButtonProvider: AppIntentTimelineProvider {
 struct SnippetButtonView: View {
     let entry: SnippetButtonEntry
     @Environment(\.widgetFamily) private var family
+
+    #if os(macOS)
+    private static let copyHint: LocalizedStringKey = "Click to copy"
+    #else
+    private static let copyHint: LocalizedStringKey = "Tap to copy"
+    #endif
 
     var body: some View {
         if let item = entry.item {
@@ -153,7 +163,7 @@ struct SnippetButtonView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
                 }
-                Text(entry.isCopied ? "Copied" : "Tap to copy")
+                Text(entry.isCopied ? "Copied" : Self.copyHint)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(tint)
             }
