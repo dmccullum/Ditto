@@ -149,7 +149,7 @@ struct DittoCommands: Commands {
         CommandGroup(replacing: .help) {
             Button("Ditto Help") {
                 openWindow(id: "help")
-                NSApp.activate(ignoringOtherApps: true)
+                NSApp.activate()
             }
             .keyboardShortcut("?", modifiers: .command)
         }
@@ -157,7 +157,7 @@ struct DittoCommands: Commands {
         // Replace the default About panel with our custom window.
         CommandGroup(replacing: .appInfo) {
             Button("About Ditto") {
-                NSApp.activate(ignoringOtherApps: true)
+                NSApp.activate()
                 AboutWindowController.shared.show()
             }
         }
@@ -165,6 +165,6 @@ struct DittoCommands: Commands {
 
     private func showMainWindow() {
         openWindow(id: "main")
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
     }
 }

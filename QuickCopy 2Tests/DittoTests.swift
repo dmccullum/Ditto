@@ -251,6 +251,96 @@ private typealias Category = Ditto.Category
         #expect(SnippetSearch.results(for: "world", in: [miss, match]).map(\.title) == ["Greeting"])
     }
 
+    // MARK: - Undo
+
+    /// SwiftData's own undo loses a saved delete on the next save; these
+    /// cover the snapshot-based undo that replaces it.
+    @Test func undoDeleteSnippetSurvivesSave() throws {
+        try withStore { context in
+            let (category, snippets) = try seed(context)
+            context.undoManager = UndoManager()
+            context.undoManager?.groupsByEvent = false
+            let id = snippets[0].uuid
+
+            context.undoManager?.beginUndoGrouping()
+            context.deleteUndoably(snippets: [snippets[0]], actionName: "Delete Snippet")
+            context.undoManager?.endUndoGrouping()
+            #expect(try context.fetchCount(FetchDescriptor<Snippet>()) == 2)
+
+            context.undoManager?.undo()
+            try context.save()
+            let restored = try context.fetch(FetchDescriptor<Snippet>()).first { $0.uuid == id }
+            #expect(restored?.title == "Daily")
+            #expect(restored?.isPinned == true)
+            #expect(restored?.category?.persistentModelID == category.persistentModelID)
+
+            context.undoManager?.redo()
+            #expect(try context.fetchCount(FetchDescriptor<Snippet>()) == 2)
+        }
+    }
+
+    @Test func undoDeleteCategoryRestoresItsSnippets() throws {
+        try withStore { context in
+            let (category, _) = try seed(context)
+            context.undoManager = UndoManager()
+            context.undoManager?.groupsByEvent = false
+
+            context.undoManager?.beginUndoGrouping()
+            context.deleteUndoably(categories: [category], actionName: "Delete Category")
+            context.undoManager?.endUndoGrouping()
+            #expect(try context.fetchCount(FetchDescriptor<Category>()) == 0)
+            #expect(try context.fetchCount(FetchDescriptor<Snippet>()) == 2)
+
+            context.undoManager?.undo()
+            try context.save()
+            let categories = try context.fetch(FetchDescriptor<Category>())
+            #expect(categories.map(\.name) == ["Hashtags"])
+            #expect(categories.first?.snippets.map(\.title) == ["Daily"])
+            #expect(try context.fetchCount(FetchDescriptor<Snippet>()) == 3)
+        }
+    }
+
+    @Test func redoInsertSurvivesSave() throws {
+        try withStore { context in
+            try seed(context)
+            context.undoManager = UndoManager()
+            context.undoManager?.groupsByEvent = false
+
+            context.undoManager?.beginUndoGrouping()
+            context.insertUndoably(actionName: "New Snippet") {
+                context.insert(Snippet(title: "New", content: "new"))
+            }
+            context.undoManager?.endUndoGrouping()
+            #expect(try context.fetchCount(FetchDescriptor<Snippet>()) == 4)
+
+            context.undoManager?.undo()
+            #expect(try context.fetchCount(FetchDescriptor<Snippet>()) == 3)
+            context.undoManager?.redo()
+            try context.save()
+            #expect(try context.fetch(FetchDescriptor<Snippet>()).contains { $0.title == "New" })
+        }
+    }
+
+    // MARK: - Copying several snippets
+
+    @Test func joinedPutsShortLinesOnePerLine() {
+        let longTags = (1...20).map { "#hashtag\($0)" }.joined(separator: " ")
+        #expect(longTags.count > 80)
+        #expect(Clipboard.joined(["https://example.com/a", "#one #two", longTags, "@ditto"])
+                == "https://example.com/a\n#one #two\n\(longTags)\n@ditto")
+    }
+
+    @Test func joinedSeparatesParagraphsWithBlankLine() {
+        let sentence = String(repeating: "This is a long sentence of prose. ", count: 4)
+        #expect(Clipboard.joined(["Link: https://a.b", sentence])
+                == "Link: https://a.b\n\n\(sentence.trimmingCharacters(in: .whitespaces))")
+        #expect(Clipboard.joined(["Hi,\nThanks!", "short"]) == "Hi,\nThanks!\n\nshort")
+    }
+
+    @Test func joinedLeavesASingleSnippetUntouched() {
+        #expect(Clipboard.joined(["  keep my spacing\n"]) == "  keep my spacing\n")
+    }
+
     @Test func newModelsGetStableUUIDs() {
         let a = Snippet(content: "one")
         let b = Snippet(content: "two")

@@ -95,12 +95,16 @@ private struct RailControl: View {
                         .transition(.opacity)
                 }
 
-                VStack(alignment: side == .right ? .trailing : .leading, spacing: gap) {
-                    if isOpen {
-                        rail(layout)
-                            .transition(.scale(scale: 0.2, anchor: .bottom).combined(with: .opacity))
+                // One container for the toggle, rail, and name card: glass
+                // can't sample other glass, so neighbors share one pass.
+                GlassEffectContainer(spacing: 0) {
+                    VStack(alignment: side == .right ? .trailing : .leading, spacing: gap) {
+                        if isOpen {
+                            rail(layout)
+                                .transition(.scale(scale: 0.2, anchor: .bottom).combined(with: .opacity))
+                        }
+                        toggle
                     }
-                    toggle
                 }
                 .padding(side == .right ? .trailing : .leading, edgeInset)
                 .gesture(drag(layout), including: .all)
@@ -324,7 +328,6 @@ private struct NameCard: View {
         .padding(.vertical, 8)
         .fixedSize()
         .glassEffect(.regular.tint(item.tint.opacity(0.25)), in: .capsule)
-        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
         .allowsHitTesting(false)
     }
 }

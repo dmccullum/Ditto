@@ -53,10 +53,6 @@ struct AboutView: View {
 
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea()
-
             LinearGradient(
                 colors: [
                     Color.blue.opacity(0.18),
@@ -137,11 +133,7 @@ private struct WorkflowSignature: View {
         }
         .padding(.horizontal, 15)
         .padding(.vertical, 8)
-        .background(.thinMaterial, in: Capsule())
-        .overlay {
-            Capsule()
-                .strokeBorder(.white.opacity(0.09), lineWidth: 0.5)
-        }
+        .glassEffect(.regular, in: .capsule)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Write, organize, pin, copy, and share snippets")
     }

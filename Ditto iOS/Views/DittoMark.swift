@@ -12,7 +12,7 @@ import SwiftUI
 
 /// One half of the mark, traced from the icon's SVG (1024×1024 artboard).
 /// The second half is the first rotated 180° and shifted down-right.
-struct DittoMarkHalf: Shape {
+nonisolated struct DittoMarkHalf: Shape {
     var isSecond = false
     var spread: CGFloat = 1
 

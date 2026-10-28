@@ -93,13 +93,9 @@ struct SnippetEditor: View {
         }
         .padding(20)
         .frame(width: 460, height: 470)
-        .onAppear {
-            loadInitialValues()
-            // Cursor starts in Name (the first field); Tab drops into Content.
-            DispatchQueue.main.async {
-                focus = .name
-            }
-        }
+        // Cursor starts in Name (the first field); Tab drops into Content.
+        .defaultFocus($focus, .name)
+        .onAppear(perform: loadInitialValues)
     }
 
     /// A left-aligned labelled field, optional trailing label (e.g. char count).
@@ -146,10 +142,11 @@ struct SnippetEditor: View {
             snippet.content = content
             snippet.category = selectedCategory
         } else {
-            let newSnippet = Snippet(title: title, content: content,
-                                     sortIndex: Snippet.topSortIndex(in: modelContext),
-                                     category: selectedCategory)
-            modelContext.insert(newSnippet)
+            modelContext.insertUndoably(actionName: "New Snippet") {
+                modelContext.insert(Snippet(title: title, content: content,
+                                            sortIndex: Snippet.topSortIndex(in: modelContext),
+                                            category: selectedCategory))
+            }
         }
         try? modelContext.save()
         dismiss()

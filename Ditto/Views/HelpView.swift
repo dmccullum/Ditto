@@ -15,6 +15,8 @@ struct HelpView: View {
 
                 section("Snippets", icon: "doc.text.fill", tint: .blue) {
                     bullet("Click a snippet card to copy it to the clipboard.")
+                    bullet("⌘-click adds or removes cards from the selection; ⇧-click selects a range. Neither copies.")
+                    bullet("With several cards selected, ⌘C copies them all: one per line for links, hashtags, and other short lines, with a blank line between longer snippets.")
                     bullet("Press ⌘N or the + button to add a new snippet.")
                     bullet("Right-click a card for Copy, Edit, Duplicate, Pin, Copy Share Link, Open Link (for URLs), and Delete.")
                     bullet("Drag a card to reorder it, drop it on a category to refile it, or drag it into another app as plain text.")
@@ -63,6 +65,11 @@ struct HelpView: View {
                     shortcut("⌘↩", "Show search result in list")
                     shortcut("⌘+ / ⌘–", "Zoom in / out")
                     shortcut("⇧⌘E", "Export library")
+                    shortcut("↑ ↓ ← →", "Move the card selection (⇧ extends it)")
+                    shortcut("↩", "Copy the selected cards")
+                    shortcut("Space", "Preview the selected card")
+                    shortcut("⌘A", "Select all cards")
+                    shortcut("⌫", "Delete the selected cards")
                     shortcut("⌘Z / ⇧⌘Z", "Undo / redo")
                     shortcut("⌘0", "Show the Ditto window")
                 }

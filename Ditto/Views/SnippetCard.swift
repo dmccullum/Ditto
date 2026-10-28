@@ -12,18 +12,35 @@ import UniformTypeIdentifiers
 
 struct SnippetCard: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.controlActiveState) private var controlActiveState
     let snippet: Snippet
     /// Card size level (0 = smallest … 4 = largest). The two smallest sizes
     /// use a more compact card so the blocks aren't needlessly tall.
     var sizeLevel: Int = 2
-    @Binding var draggedSnippet: Snippet?
+    /// Part of the grid's selection. The ring dims to gray when the grid
+    /// isn't focused or the window isn't key, as Finder's does.
+    var isSelected = false
+    var isSelectionFocused = true
+    /// Showing the copy confirmation.
+    var isFlashing = false
+    @Binding var isShowingPreview: Bool
+    /// A drag from the grid is in progress (macOS 26's live reorder).
+    var isDragging = false
+    /// How many snippets the context menu acts on: the whole selection when
+    /// this card is in it, otherwise just this card.
+    var actionCount = 1
+    var allTargetsPinned = false
+    var onClick: () -> Void
+    var onCopy: () -> Void
     var onEdit: () -> Void
-    var onReorder: (_ dragged: Snippet, _ target: Snippet) -> Void
+    var onTogglePin: () -> Void
+    var onDelete: () -> Void
+    /// macOS 26 only: the drag passed over this card / was dropped on it.
+    /// On 27 the grid's reorder container handles both.
+    var onReorder: () -> Void
     var onCommit: () -> Void
 
-    @State private var didCopy = false
     @State private var isHovering = false
-    @State private var isShowingPreview = false
     @State private var isHoveringPreviewButton = false
 
     private var accent: Color {
@@ -50,63 +67,71 @@ struct SnippetCard: View {
         sizeLevel <= 1 ? 11 : 14
     }
 
+    private var selectionColor: Color {
+        isSelectionFocused && controlActiveState == .key ? .accentColor : .secondary
+    }
+
     var body: some View {
-        Button(action: copy) {
+        Button(action: onClick) {
             content
                 .frame(maxWidth: .infinity, minHeight: cardMinHeight, alignment: .topLeading)
                 .padding(cardPadding)
                 .background(cardBackground)
                 .overlay {
-                    if didCopy { CopiedOverlay(accent: accent) }
+                    if isFlashing { CopiedOverlay(accent: accent) }
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(accent.opacity(isHovering ? 0.55 : 0.18), lineWidth: 1)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(selectionColor, lineWidth: 3)
+                            .padding(-4)
+                    }
+                }
                 .shadow(color: accent.opacity(isHovering ? 0.25 : 0.08),
                         radius: isHovering ? 10 : 4, y: isHovering ? 5 : 2)
                 .scaleEffect(isHovering ? 1.02 : 1.0)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .onHover { isHovering = $0 }
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovering)
-        .onDrag {
-            draggedSnippet = snippet
-            // Provide plain text so the snippet can also be dragged into other apps.
-            return NSItemProvider(object: snippet.content as NSString)
-        }
-        .onDrop(
-            of: [.text],
-            delegate: SnippetReorderDropDelegate(
-                target: snippet,
-                draggedSnippet: $draggedSnippet,
-                onReorder: onReorder,
-                onCommit: onCommit
-            )
-        )
+        // The grid's drag container supplies the payload (and the rest of
+        // the selection, when this card is selected).
+        .draggable(containerItemID: snippet.persistentModelID)
+        .modifier(LegacyReorderDrop(isDragging: isDragging, onReorder: onReorder,
+                                    onCommit: onCommit))
         .contextMenu {
-            Button("Copy", systemImage: "doc.on.doc", action: copy)
-            Button("Preview", systemImage: "eye") { isShowingPreview = true }
-            Button("Edit…", systemImage: "pencil", action: onEdit)
-            Button("Duplicate", systemImage: "plus.square.on.square", action: duplicate)
-            Button("Copy Share Link", systemImage: "link", action: copyShareLink)
+            let many = actionCount > 1
+            Button(many ? "Copy \(actionCount) Snippets" : "Copy", systemImage: "doc.on.doc",
+                   action: onCopy)
+            if !many {
+                Button("Preview", systemImage: "eye") { isShowingPreview = true }
+                Button("Edit…", systemImage: "pencil", action: onEdit)
+                Button("Duplicate", systemImage: "plus.square.on.square", action: duplicate)
+                Button("Copy Share Link", systemImage: "link", action: copyShareLink)
+            }
             Divider()
-            Button(snippet.isPinned ? "Unpin" : "Pin",
-                   systemImage: snippet.isPinned ? "pin.slash" : "pin",
-                   action: togglePin)
-            if let url = snippet.urlValue {
+            Button(allTargetsPinned ? "Unpin" : "Pin",
+                   systemImage: allTargetsPinned ? "pin.slash" : "pin",
+                   action: onTogglePin)
+            if !many, let url = snippet.urlValue {
                 Button("Open Link", systemImage: "safari") {
                     NSWorkspace.shared.open(url)
                 }
             }
             Divider()
-            Button("Delete", systemImage: "trash", role: .destructive, action: delete)
+            Button(many ? "Delete \(actionCount) Snippets" : "Delete", systemImage: "trash",
+                   role: .destructive, action: onDelete)
         }
         .popover(isPresented: $isShowingPreview, arrowEdge: .bottom) {
             SnippetPreview(
                 snippet: snippet,
-                onCopy: { isShowingPreview = false; copy() },
+                onCopy: { isShowingPreview = false; onCopy() },
                 onEdit: { isShowingPreview = false; onEdit() }
             )
         }
@@ -180,38 +205,23 @@ struct SnippetCard: View {
         .background(.background)
     }
 
-    private func copy() {
-        Clipboard.copy(snippet.content)
-        // Usage telemetry shouldn't land on the undo stack.
-        let undo = modelContext.undoManager
-        undo?.disableUndoRegistration()
-        snippet.copyCount += 1
-        snippet.lastCopiedAt = .now
-        try? modelContext.save()
-        undo?.enableUndoRegistration()
-
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { didCopy = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            withAnimation(.easeOut(duration: 0.25)) { didCopy = false }
-        }
-    }
-
     private func duplicate() {
-        // Shift everything after the original down one slot so the copy's
-        // position right after it is deterministic (no sortIndex ties).
-        let all = (try? modelContext.fetch(FetchDescriptor<Snippet>())) ?? []
-        for other in all where other.sortIndex > snippet.sortIndex {
-            other.sortIndex += 1
+        modelContext.insertUndoably(actionName: "Duplicate Snippet") {
+            // Shift everything after the original down one slot so the copy's
+            // position right after it is deterministic (no sortIndex ties).
+            let all = (try? modelContext.fetch(FetchDescriptor<Snippet>())) ?? []
+            for other in all where other.sortIndex > snippet.sortIndex {
+                other.sortIndex += 1
+            }
+            let copy = Snippet(
+                title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
+                content: snippet.content,
+                sortIndex: snippet.sortIndex + 1,
+                isPinned: false,
+                category: snippet.category
+            )
+            modelContext.insert(copy)
         }
-        let copy = Snippet(
-            title: snippet.title.isEmpty ? "" : snippet.title + " Copy",
-            content: snippet.content,
-            sortIndex: snippet.sortIndex + 1,
-            isPinned: false,
-            category: snippet.category
-        )
-        modelContext.insert(copy)
-        try? modelContext.save()
     }
 
     /// Copy a self-contained ditto://import link for this snippet (and its
@@ -221,16 +231,6 @@ struct SnippetCard: View {
         if let link = dittoImportLink(snippets: [snippet], categories: categories) {
             Clipboard.copy(link.absoluteString)
         }
-    }
-
-    private func togglePin() {
-        snippet.isPinned.toggle()
-        try? modelContext.save()
-    }
-
-    private func delete() {
-        modelContext.delete(snippet)
-        try? modelContext.save()
     }
 }
 
@@ -380,21 +380,43 @@ struct AddSnippetCard: View {
     }
 }
 
-/// Reorders snippets live as one is dragged over another. We don't decode the
-/// dragged payload here — instead we read the shared `draggedSnippet` that was
-/// set when the drag began, which is far more reliable for in-app reordering.
-struct SnippetReorderDropDelegate: DropDelegate {
-    let target: Snippet
-    @Binding var draggedSnippet: Snippet?
-    let onReorder: (_ dragged: Snippet, _ target: Snippet) -> Void
+/// What a dragged card carries: its identity, for drops inside Ditto (which
+/// read the IDs from the drag session), and its text, for other apps.
+nonisolated struct DraggedSnippet: Transferable {
+    let id: PersistentIdentifier
+    let content: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        ProxyRepresentation(exporting: \.content)
+    }
+}
+
+/// macOS 26: reorders live as a drag passes over each card and commits on
+/// drop. On 27, `reorderable()` and the grid's reorder container do this.
+private struct LegacyReorderDrop: ViewModifier {
+    let isDragging: Bool
+    let onReorder: () -> Void
     let onCommit: () -> Void
 
-    func validateDrop(info: DropInfo) -> Bool { draggedSnippet != nil }
+    func body(content: Content) -> some View {
+        if #available(macOS 27, *) {
+            content
+        } else {
+            content.onDrop(of: [.text], delegate: SnippetReorderDropDelegate(
+                isDragging: isDragging, onReorder: onReorder, onCommit: onCommit))
+        }
+    }
+}
+
+private struct SnippetReorderDropDelegate: DropDelegate {
+    let isDragging: Bool
+    let onReorder: () -> Void
+    let onCommit: () -> Void
+
+    func validateDrop(info: DropInfo) -> Bool { isDragging }
 
     func dropEntered(info: DropInfo) {
-        guard let dragged = draggedSnippet,
-              dragged.persistentModelID != target.persistentModelID else { return }
-        onReorder(dragged, target)
+        if isDragging { onReorder() }
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
