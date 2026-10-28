@@ -69,11 +69,11 @@ struct HelpView: View {
                     shortcut("⇧⌘E", "Export library")
                     shortcut("↑ ↓ ← →", "Move the card selection (⇧ extends it)")
                     shortcut("↩", "Copy the selected cards")
-                    shortcut("Space", "Preview the selected card")
+                    shortcut("Space / ⌘Y", "Preview the selected card")
                     shortcut("⌘I", "Edit the selected snippet")
                     shortcut("⌘D", "Duplicate the selected snippet")
                     shortcut("⌘A", "Select all cards")
-                    shortcut("⌫", "Delete the selected cards")
+                    shortcut("⌫ / ⌘⌫", "Delete the selected cards")
                     shortcut("⌘Z / ⇧⌘Z", "Undo / redo")
                 }
             }

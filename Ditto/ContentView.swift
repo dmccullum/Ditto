@@ -990,11 +990,17 @@ struct ContentView: View {
             count: targets.count,
             allPinned: !targets.isEmpty && targets.allSatisfy(\.isPinned),
             link: single?.urlValue,
+            isEditingText: quickSearchIsFocused,
             copy: { copy(targets) },
             preview: {
+                // Toggles, like Space and Quick Look's ⌘Y.
                 guard let id = single?.persistentModelID else { return }
-                scrollTarget = id
-                previewingSnippetID = id
+                if previewingSnippetID == id {
+                    previewingSnippetID = nil
+                } else {
+                    scrollTarget = id
+                    previewingSnippetID = id
+                }
             },
             edit: { editingSnippet = single },
             duplicate: { if let single { duplicate(single) } },

@@ -40,6 +40,8 @@ struct SnippetActions {
     var allPinned: Bool
     /// The http(s) link a single selected snippet holds.
     var link: URL?
+    /// Quick search's field has focus, so ⌘⌫ belongs to it, not Delete.
+    var isEditingText: Bool
     var copy: () -> Void
     var preview: () -> Void
     var edit: () -> Void
@@ -203,6 +205,7 @@ struct DittoCommands: Commands {
             Button(count > 1 ? "Copy \(count) Snippets" : "Copy") { snippetActions?.copy() }
                 .disabled(count == 0)
             Button("Preview") { snippetActions?.preview() }
+                .keyboardShortcut("y", modifiers: .command)
                 .disabled(count != 1)
             Button("Edit…") { snippetActions?.edit() }
                 .keyboardShortcut("i", modifiers: .command)
@@ -220,7 +223,8 @@ struct DittoCommands: Commands {
             .disabled(snippetActions?.link == nil)
             Divider()
             Button(count > 1 ? "Delete \(count) Snippets" : "Delete Snippet") { snippetActions?.delete() }
-                .disabled(count == 0)
+                .keyboardShortcut(.delete, modifiers: .command)
+                .disabled(count == 0 || snippetActions?.isEditingText == true)
         }
 
         // The category selected in the sidebar. Same commands as its
