@@ -12,6 +12,7 @@ import UniformTypeIdentifiers
 
 struct SnippetCard: View {
     @Environment(\.controlActiveState) private var controlActiveState
+    @Environment(\.colorSchemeContrast) private var contrast
     let snippet: Snippet
     /// Card size level (0 = smallest … 4 = largest). The two smallest sizes
     /// use a more compact card so the blocks aren't needlessly tall.
@@ -68,6 +69,16 @@ struct SnippetCard: View {
         sizeLevel <= 1 ? 11 : 14
     }
 
+    /// The card's outline, raised under Increase Contrast.
+    private var strokeOpacity: Double {
+        switch (contrast == .increased, isHovering) {
+        case (false, false): 0.18
+        case (false, true):  0.55
+        case (true, false):  0.6
+        case (true, true):   0.9
+        }
+    }
+
     private var selectionColor: Color {
         isSelectionFocused && controlActiveState == .key ? .accentColor : .secondary
     }
@@ -83,7 +94,7 @@ struct SnippetCard: View {
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(accent.opacity(isHovering ? 0.55 : 0.18), lineWidth: 1)
+                        .strokeBorder(accent.opacity(strokeOpacity), lineWidth: 1)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
@@ -93,14 +104,14 @@ struct SnippetCard: View {
                             .padding(-4)
                     }
                 }
-                .shadow(color: accent.opacity(isHovering ? 0.25 : 0.08),
-                        radius: isHovering ? 10 : 4, y: isHovering ? 5 : 2)
-                .scaleEffect(isHovering ? 1.02 : 1.0)
+                // Hover changes the outline and footer tint only; the card
+                // doesn't grow or lift.
+                .shadow(color: accent.opacity(0.08), radius: 4, y: 2)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .onHover { isHovering = $0 }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovering)
+        .animation(.snappy(duration: 0.2), value: isHovering)
         // The grid's drag container supplies the payload (and the rest of
         // the selection, when this card is selected).
         .draggable(containerItemID: snippet.persistentModelID)
@@ -221,6 +232,7 @@ struct SnippetCard: View {
 /// The copy confirmation, shared with iOS: the card floods with its color and
 /// the Ditto mark splits in two — one snippet, now also on your clipboard.
 private struct CopiedOverlay: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let accent: Color
     @State private var spread: CGFloat = 0
 
@@ -237,10 +249,15 @@ private struct CopiedOverlay: View {
                 }
                 .foregroundStyle(.white)
             }
-            .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.97)))
             .onAppear {
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.6).delay(0.05)) {
+                // Reduce Motion shows the mark already split; the fade is enough.
+                if reduceMotion {
                     spread = 1
+                } else {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.6).delay(0.05)) {
+                        spread = 1
+                    }
                 }
             }
             .accessibilityElement()
@@ -321,6 +338,7 @@ private struct SnippetPreview: View {
 
 /// A dashed "+" tile shown at the end of a populated grid to add a snippet.
 struct AddSnippetCard: View {
+    @Environment(\.colorSchemeContrast) private var contrast
     var sizeLevel: Int = 2
     var action: () -> Void
     @State private var isHovering = false
@@ -351,15 +369,16 @@ struct AddSnippetCard: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .strokeBorder(
-                        .secondary.opacity(isHovering ? 0.6 : 0.3),
+                        .secondary.opacity(contrast == .increased
+                                           ? (isHovering ? 0.9 : 0.6)
+                                           : (isHovering ? 0.6 : 0.3)),
                         style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])
                     )
             )
-            .scaleEffect(isHovering ? 1.02 : 1.0)
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovering)
+        .animation(.snappy(duration: 0.2), value: isHovering)
         .help("Add a new snippet")
     }
 }

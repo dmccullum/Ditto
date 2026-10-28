@@ -50,6 +50,7 @@ struct ContentView: View {
     @Environment(\.undoManager) private var undoManager
     @Environment(AppCommands.self) private var appCommands
     @Environment(AppSettings.self) private var settings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
 
@@ -130,7 +131,7 @@ struct ContentView: View {
                     if isQuickSearchPresented {
                         quickSearchPanel
                             .padding(.top, 28)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .transition(dropDownTransition)
                     }
                 }
         }
@@ -848,7 +849,7 @@ struct ContentView: View {
         .background {
             ClickOutsideSearchMonitor(onClickOutside: dismissQuickSearch)
         }
-        .glassEffect(.regular, in: .rect(cornerRadius: 18))
+        .floatingGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private func quickSearchRow(_ snippet: Snippet) -> some View {
@@ -940,9 +941,9 @@ struct ContentView: View {
                 .foregroundStyle(banner.tint)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 9)
-                .glassEffect(.regular, in: .capsule)
+                .floatingGlass(in: Capsule())
                 .padding(.top, 12)
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(dropDownTransition)
                 .onTapGesture { withAnimation { self.banner = nil } }
                 .task(id: banner.id) {
                     try? await Task.sleep(for: .seconds(2.5))
@@ -952,7 +953,15 @@ struct ContentView: View {
     }
 
     private func show(_ message: String, symbol: String, tint: Color) {
-        withAnimation(.bouncy) { banner = Banner(message: message, symbol: symbol, tint: tint) }
+        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .bouncy) {
+            banner = Banner(message: message, symbol: symbol, tint: tint)
+        }
+    }
+
+    /// The banner and quick search slide down from the top, or just fade
+    /// in with Reduce Motion.
+    private var dropDownTransition: AnyTransition {
+        reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity)
     }
 
     // MARK: - Menu commands
@@ -1515,7 +1524,28 @@ private struct ClearsSelectionOnTap: ViewModifier {
     }
 }
 
+/// Liquid Glass for a control floating over the grid, or an opaque fill with
+/// a hairline when Reduce Transparency is on.
+private struct FloatingGlass<S: InsettableShape>: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    let shape: S
+
+    func body(content: Content) -> some View {
+        if reduceTransparency {
+            content
+                .background(Color(nsColor: .windowBackgroundColor), in: shape)
+                .overlay(shape.strokeBorder(Color(nsColor: .separatorColor)))
+        } else {
+            content.glassEffect(.regular, in: shape)
+        }
+    }
+}
+
 extension View {
+    fileprivate func floatingGlass(in shape: some InsettableShape) -> some View {
+        modifier(FloatingGlass(shape: shape))
+    }
+
     /// A sidebar row that takes cards dragged from the grid (but not text
     /// from other apps) and hands over their IDs from the drag session.
     func snippetDropTarget(isTargeted: Binding<Bool>,
