@@ -46,7 +46,7 @@ struct SnippetCard: View {
     @State private var isHoveringPreviewButton = false
 
     private var accent: Color {
-        SnippetColor.color(for: snippet.category?.colorName ?? "blue")
+        snippet.tint
     }
 
     private var previewLineLimit: Int {
@@ -273,7 +273,7 @@ private struct SnippetPreview: View {
     var onEdit: () -> Void
 
     private var accent: Color {
-        SnippetColor.color(for: snippet.category?.colorName ?? "blue")
+        snippet.tint
     }
 
     /// Long content scrolls inside a fixed height; short content hugs.

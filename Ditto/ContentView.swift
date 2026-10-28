@@ -863,7 +863,7 @@ struct ContentView: View {
 
     private func quickSearchRow(_ snippet: Snippet) -> some View {
         let selected = quickSearchSelection == snippet.persistentModelID
-        let accent = SnippetColor.color(for: snippet.category?.colorName ?? "blue")
+        let accent = snippet.tint
 
         return Button {
             quickSearchSelection = snippet.persistentModelID

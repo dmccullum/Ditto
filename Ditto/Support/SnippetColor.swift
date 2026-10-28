@@ -53,6 +53,15 @@ enum SnippetColor: String, CaseIterable, Identifiable {
     }
 }
 
+@MainActor
+extension Snippet {
+    /// The snippet's category color. Uncategorized snippets use the app's
+    /// accent, so a system accent the user picked still wins.
+    var tint: Color {
+        category.map { SnippetColor.color(for: $0.colorName) } ?? .accentColor
+    }
+}
+
 /// A curated set of SF Symbols that read well as category icons.
 enum CategorySymbol {
     /// A symbol name as VoiceOver should read it: "envelope.fill" → "envelope".

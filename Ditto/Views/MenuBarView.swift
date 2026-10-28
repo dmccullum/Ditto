@@ -387,7 +387,7 @@ private struct MenuBarRow: View {
     let onHover: (Bool) -> Void
 
     private var accent: Color {
-        SnippetColor.color(for: snippet.category?.colorName ?? "blue")
+        snippet.tint
     }
 
     var body: some View {
