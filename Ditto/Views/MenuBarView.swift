@@ -2,8 +2,8 @@
 //  MenuBarView.swift
 //  Ditto
 //
-//  The dropdown that appears from the menu bar icon. Search, then click any
-//  snippet to copy it instantly. Built for speed.
+//  The dropdown that appears from the menu bar icon. Search, then click a
+//  snippet, or pick one with ↑/↓ and press Return, to copy it.
 //
 
 import SwiftUI
@@ -12,6 +12,7 @@ import AppKit
 
 struct MenuBarView: View {
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
     @Query(sort: \Category.sortIndex) private var categories: [Category]
@@ -19,6 +20,8 @@ struct MenuBarView: View {
 
     @State private var searchText = ""
     @State private var justCopiedID: PersistentIdentifier?
+    /// The row ↑/↓ and the pointer move, and Return copies.
+    @State private var highlightedRowID: String?
     /// Measured height of the list's content. A menu bar window sizes itself
     /// to its content, and a bare ScrollView has no natural height, so without
     /// this the list collapses to nothing and the menu looks empty.
@@ -32,7 +35,7 @@ struct MenuBarView: View {
             header
             Divider()
 
-            if filteredSnippets.isEmpty {
+            if isSearching ? searchRows.isEmpty : allSnippets.isEmpty {
                 emptyState
             } else {
                 snippetList
@@ -50,6 +53,10 @@ struct MenuBarView: View {
             guard let window = note.object as? NSWindow, window === hostWindow else { return }
             focusSearch()
         }
+        .onChange(of: searchText) { _, _ in
+            // While searching, Return copies the top match straight away.
+            highlightedRowID = isSearching ? visibleRows.first?.id : nil
+        }
     }
 
     // MARK: - Sections
@@ -61,6 +68,26 @@ struct MenuBarView: View {
             TextField("Search snippets", text: $searchText)
                 .textFieldStyle(.plain)
                 .focused($searchFocused)
+                .onKeyPress(.downArrow) {
+                    moveHighlight(by: 1)
+                    return .handled
+                }
+                .onKeyPress(.upArrow) {
+                    moveHighlight(by: -1)
+                    return .handled
+                }
+                .onKeyPress(.return) {
+                    guard let row = highlightedRow else { return .ignored }
+                    copy(row.snippet)
+                    return .handled
+                }
+                .onKeyPress(.escape) {
+                    // Esc clears the search first; with nothing to clear it
+                    // falls through to the panel's own Esc handling.
+                    guard !searchText.isEmpty else { return .ignored }
+                    searchText = ""
+                    return .handled
+                }
             if !searchText.isEmpty {
                 Button {
                     searchText = ""
@@ -74,27 +101,50 @@ struct MenuBarView: View {
     }
 
     private var snippetList: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 2) {
-                ForEach(displayGroups, id: \.title) { group in
-                    sectionHeader(group)
-                    if isExpanded(group.title) {
-                        ForEach(group.rows) { row in
-                            MenuBarRow(
-                                snippet: row.snippet,
-                                justCopied: justCopiedID == row.snippet.persistentModelID,
-                                action: { copy(row.snippet) }
-                            )
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    if isSearching {
+                        // Search results are one ranked list, best match first.
+                        ForEach(searchRows) { row in rowView(row) }
+                    } else {
+                        ForEach(displayGroups, id: \.title) { group in
+                            sectionHeader(group)
+                            if isExpanded(group.title) {
+                                ForEach(group.rows) { row in rowView(row) }
+                            }
                         }
                     }
                 }
+                .padding(.top, isSearching ? 6 : 0)
+                .padding(.bottom, 6)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                    listContentHeight = height
+                }
             }
-            .padding(.bottom, 6)
-            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
-                listContentHeight = height
+            .frame(height: min(max(listContentHeight, 44), maxListHeight))
+            .onChange(of: highlightedRowID) { _, id in
+                guard let id else { return }
+                proxy.scrollTo(id)
             }
         }
-        .frame(height: min(max(listContentHeight, 44), maxListHeight))
+    }
+
+    private func rowView(_ row: Row) -> some View {
+        MenuBarRow(
+            snippet: row.snippet,
+            isHighlighted: highlightedRowID == row.id,
+            justCopied: justCopiedID == row.snippet.persistentModelID,
+            action: { copy(row.snippet) },
+            onHover: { hovering in
+                if hovering {
+                    highlightedRowID = row.id
+                } else if highlightedRowID == row.id {
+                    highlightedRowID = nil
+                }
+            }
+        )
+        .id(row.id)
     }
 
     private func sectionHeader(_ group: Group) -> some View {
@@ -142,7 +192,7 @@ struct MenuBarView: View {
             Image(systemName: "tray")
                 .font(.title)
                 .foregroundStyle(.secondary)
-            Text(searchText.isEmpty ? "No snippets yet" : "No matches")
+            Text(isSearching ? "No matches" : "No snippets yet")
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -161,6 +211,14 @@ struct MenuBarView: View {
 
             Spacer()
 
+            Button("Settings…") {
+                NSApp.activate()
+                openSettings()
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .keyboardShortcut(",", modifiers: .command)
+
             Button {
                 NSApp.terminate(nil)
             } label: {
@@ -168,6 +226,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
             .help("Quit Ditto")
+            .accessibilityLabel("Quit Ditto")
         }
         .font(.callout)
         .padding(10)
@@ -175,12 +234,24 @@ struct MenuBarView: View {
 
     // MARK: - Derived data
 
-    private var filteredSnippets: [Snippet] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return allSnippets }
-        return allSnippets.filter {
-            $0.title.localizedStandardContains(query) || $0.content.localizedStandardContains(query)
-        }
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Ranked the same way as the main window's quick search.
+    private var searchRows: [Row] {
+        makeRows(SnippetSearch.results(for: searchText, in: allSnippets), section: "Results")
+    }
+
+    /// The rows on screen, in order: what ↑/↓ step through.
+    private var visibleRows: [Row] {
+        if isSearching { return searchRows }
+        return displayGroups.filter { isExpanded($0.title) }.flatMap(\.rows)
+    }
+
+    private var highlightedRow: Row? {
+        guard let highlightedRowID else { return nil }
+        return visibleRows.first { $0.id == highlightedRowID }
     }
 
     /// A row carries a section-unique id so the same snippet can appear in both
@@ -209,11 +280,12 @@ struct MenuBarView: View {
         )
     }
 
-    /// What the list shows: a "Frequently Used" shortcut on top (when not
-    /// searching), then the per-category groups.
+    /// What the list shows when not searching: a "Frequently Used" shortcut
+    /// on top, then the per-category groups.
     private var displayGroups: [Group] {
+        guard !isSearching else { return [] }
         var groups: [Group] = []
-        if searchText.isEmpty && !frequentSnippets.isEmpty {
+        if !frequentSnippets.isEmpty {
             groups.append(Group(title: "Frequently Used",
                                 rows: makeRows(frequentSnippets, section: "Frequently Used")))
         }
@@ -224,14 +296,14 @@ struct MenuBarView: View {
     private var groupedSnippets: [Group] {
         var groups: [Group] = []
         for category in categories {
-            let matches = filteredSnippets.filter {
+            let matches = allSnippets.filter {
                 $0.category?.persistentModelID == category.persistentModelID
             }
             if !matches.isEmpty {
                 groups.append(Group(title: category.name, rows: makeRows(matches, section: category.name)))
             }
         }
-        let uncategorized = filteredSnippets.filter { $0.category == nil }
+        let uncategorized = allSnippets.filter { $0.category == nil }
         if !uncategorized.isEmpty {
             groups.append(Group(title: "Uncategorized", rows: makeRows(uncategorized, section: "Uncategorized")))
         }
@@ -239,6 +311,16 @@ struct MenuBarView: View {
     }
 
     // MARK: - Actions
+
+    private func moveHighlight(by offset: Int) {
+        let rows = visibleRows
+        guard !rows.isEmpty else { return }
+        guard let current = rows.firstIndex(where: { $0.id == highlightedRowID }) else {
+            highlightedRowID = (offset > 0 ? rows.first : rows.last)?.id
+            return
+        }
+        highlightedRowID = rows[min(max(current + offset, 0), rows.count - 1)].id
+    }
 
     /// Put the cursor in search so typing starts filtering right away.
     private func focusSearch() {
@@ -299,10 +381,10 @@ private struct HostWindowReader: NSViewRepresentable {
 /// A single tappable row in the menu bar dropdown.
 private struct MenuBarRow: View {
     let snippet: Snippet
+    let isHighlighted: Bool
     let justCopied: Bool
     let action: () -> Void
-
-    @State private var isHovering = false
+    let onHover: (Bool) -> Void
 
     private var accent: Color {
         SnippetColor.color(for: snippet.category?.colorName ?? "blue")
@@ -329,19 +411,20 @@ private struct MenuBarRow: View {
 
                 Image(systemName: justCopied ? "checkmark.circle.fill" : "doc.on.doc")
                     .foregroundStyle(justCopied ? accent : .secondary)
-                    .opacity(justCopied || isHovering ? 1 : 0)
+                    .opacity(justCopied || isHighlighted ? 1 : 0)
             }
             .padding(.vertical, 5)
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(accent.opacity(isHovering ? 0.14 : 0))
+                    .fill(accent.opacity(isHighlighted ? 0.14 : 0))
                     .padding(.horizontal, 6)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
+        .onHover(perform: onHover)
+        .accessibilityAddTraits(isHighlighted ? .isSelected : [])
     }
 }
