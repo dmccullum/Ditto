@@ -82,8 +82,9 @@ struct ContentView: View {
     @State private var isCreatingCategory = false
     @State private var pasteDraft: PasteDraft?
 
-    // The snippet currently being dragged, captured when the drag starts.
-    @State private var draggedSnippet: Snippet?
+    // The snippets in the current drag (the whole selection when a selected
+    // card is dragged), read from the drag session.
+    @State private var draggedSnippetIDs: [PersistentIdentifier] = []
 
     // A local copy of the displayed snippets that we reorder live during a drag,
     // committing to the database only on drop. Keeping reordering out of the
@@ -203,11 +204,11 @@ struct ContentView: View {
         .onChange(of: appCommands.resetZoom) { _, v in
             if v { sizeLevel = 2; appCommands.resetZoom = false }
         }
-        .onChange(of: draggedSnippet) { _, dragged in
+        .onChange(of: draggedSnippetIDs) { old, new in
             // Snapshot the current order only when a drag begins. The rest of
             // the time the grid renders straight from the query, so ordinary
             // clicks don't pay for a mirror resync.
-            if dragged != nil { displayOrder = filteredSnippets }
+            if old.isEmpty && !new.isEmpty { displayOrder = filteredSnippets }
         }
         .onChange(of: quickSearchText) { _, _ in
             quickSearchSelection = quickSearchResults.first?.persistentModelID
@@ -224,14 +225,7 @@ struct ContentView: View {
                     .badge(allSnippets.count)
                     .listRowBackground(dropHighlight(allRowIsDropTarget))
                     .tag(SidebarSelection.all)
-                    .onDrop(
-                        of: [.text],
-                        delegate: UncategorizeDropDelegate(
-                            draggedSnippet: $draggedSnippet,
-                            highlighted: $allRowIsDropTarget,
-                            onUncategorize: { move($0, to: nil) }
-                        )
-                    )
+                    .snippetDropTarget(isTargeted: $allRowIsDropTarget) { refile($0, to: nil) }
 
                 Label {
                     Text("Frequent")
@@ -266,7 +260,8 @@ struct ContentView: View {
 
     private func categoryRow(_ category: Category) -> some View {
         let accent = SnippetColor.color(for: category.colorName)
-        let isTarget = dropTargetCategoryID == category.persistentModelID
+        let id = category.persistentModelID
+        let isTarget = dropTargetCategoryID == id
         return Label {
             Text(category.name)
         } icon: {
@@ -276,15 +271,13 @@ struct ContentView: View {
         .badge(category.snippets.count)
         .contentShape(Rectangle())
         .listRowBackground(dropHighlight(isTarget, tint: accent))
-        .onDrop(
-            of: [.text],
-            delegate: CategoryDropDelegate(
-                target: category,
-                draggedSnippet: $draggedSnippet,
-                highlightedCategoryID: $dropTargetCategoryID,
-                onRefile: { move($0, to: category) }
-            )
-        )
+        .snippetDropTarget(isTargeted: Binding(
+            get: { dropTargetCategoryID == id },
+            set: { targeted in
+                if targeted { dropTargetCategoryID = id }
+                else if dropTargetCategoryID == id { dropTargetCategoryID = nil }
+            }
+        )) { refile($0, to: category) }
         .contextMenu {
             Button("Edit…", systemImage: "pencil") { editingCategory = category }
             Button("Duplicate", systemImage: "plus.square.on.square") { duplicateCategory(category) }
@@ -322,6 +315,14 @@ struct ContentView: View {
             }
         }
         .onGeometryChange(for: CGSize.self) { $0.size } action: { gridSize = $0 }
+        .dragContainer(for: DraggedSnippet.self, itemID: \.id) { ids in
+            ids.compactMap { id in
+                allSnippets.first { $0.persistentModelID == id }
+                    .map { DraggedSnippet(id: id, content: $0.content) }
+            }
+        }
+        .dragContainerSelection(Array(selectedSnippetIDs))
+        .onDragSessionUpdated(trackDrag)
         .focusable()
         .focusEffectDisabled()
         .focused($gridIsFocused)
@@ -420,8 +421,15 @@ struct ContentView: View {
                     columns: [GridItem(.adaptive(minimum: cardMinWidth), spacing: Self.gridSpacing)],
                     spacing: Self.gridSpacing
                 ) {
-                    ForEach(gridSnippets) { snippet in
-                        card(for: snippet)
+                    if #available(macOS 27, *) {
+                        ForEach(filteredSnippets) { snippet in
+                            card(for: snippet)
+                        }
+                        .reorderable()
+                    } else {
+                        ForEach(gridSnippets) { snippet in
+                            card(for: snippet)
+                        }
                     }
 
                     // The add tile only appears in views you populate manually.
@@ -429,6 +437,9 @@ struct ContentView: View {
                         AddSnippetCard(sizeLevel: sizeLevel) { isCreatingSnippet = true }
                     }
                 }
+                .modifier(FlatReorderContainer(isEnabled: isReorderable) { sources, target in
+                    moveSnippets(sources, before: target)
+                })
                 .padding(Self.gridPadding)
                 .modifier(ClearsSelectionOnTap(minHeight: gridSize.height) {
                     clearSelection(); gridIsFocused = true
@@ -453,7 +464,7 @@ struct ContentView: View {
             isFlashing: flashingSnippetIDs.contains(id),
             isShowingPreview: Binding(get: { previewingSnippetID == id },
                                       set: { previewingSnippetID = $0 ? id : nil }),
-            draggedSnippet: $draggedSnippet,
+            isDragging: !draggedSnippetIDs.isEmpty,
             actionCount: targets.count,
             allTargetsPinned: targets.allSatisfy(\.isPinned),
             onClick: { click(snippet) },
@@ -461,7 +472,7 @@ struct ContentView: View {
             onEdit: { editingSnippet = snippet },
             onTogglePin: { togglePin(actionTargets(for: snippet)) },
             onDelete: { delete(actionTargets(for: snippet)) },
-            onReorder: { reorderSnippetLocally($0, target: $1) },
+            onReorder: { reorderSnippetsLocally(to: snippet) },
             onCommit: commitSnippetOrder
         )
     }
@@ -574,14 +585,31 @@ struct ContentView: View {
                                                        spacing: Self.gridSpacing)],
                                     spacing: Self.gridSpacing
                                 ) {
-                                    ForEach(group.snippets) { snippet in
-                                        card(for: snippet)
+                                    if #available(macOS 27, *) {
+                                        ForEach(group.snippets) { snippet in
+                                            card(for: snippet)
+                                        }
+                                        .reorderable(collectionID: group.id)
+                                    } else {
+                                        ForEach(group.snippets) { snippet in
+                                            card(for: snippet)
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
+                .modifier(GroupedReorderContainer(isEnabled: isReorderable) { sources, target, group in
+                    // Dropping into another category's section refiles there.
+                    if settings.grouping == .category {
+                        let category = categories.first { "cat:\($0.name)" == group }
+                        if category != nil || group == "uncategorized" {
+                            refile(sources, to: category)
+                        }
+                    }
+                    moveSnippets(sources, before: target)
+                })
                 .padding(Self.gridPadding)
                 .modifier(ClearsSelectionOnTap(minHeight: gridSize.height) {
                     clearSelection(); gridIsFocused = true
@@ -703,7 +731,7 @@ struct ContentView: View {
     /// What the grid renders: straight from the query normally, and from the
     /// local mirror only while a drag is in progress.
     private var gridSnippets: [Snippet] {
-        (draggedSnippet == nil || displayOrder.isEmpty) ? filteredSnippets : displayOrder
+        (draggedSnippetIDs.isEmpty || displayOrder.isEmpty) ? filteredSnippets : displayOrder
     }
 
     // MARK: - Quick search
@@ -1110,33 +1138,62 @@ struct ContentView: View {
         editingCategory = copy
     }
 
-    /// Live reorder during a drag — mutates only the local copy so the grid
-    /// animates smoothly without the database re-sorting under the cursor.
-    private func reorderSnippetLocally(_ dragged: Snippet, target: Snippet) {
-        guard isReorderable, dragged.persistentModelID != target.persistentModelID else { return }
+    private func trackDrag(_ session: DragSession) {
+        switch session.phase {
+        case .initial, .active:
+            if draggedSnippetIDs.isEmpty {
+                draggedSnippetIDs = session.draggedItemIDs(for: PersistentIdentifier.self)
+            }
+        default:
+            draggedSnippetIDs = []
+        }
+    }
+
+    /// macOS 26 live reorder: moves the dragged cards, as a block, to the
+    /// card under the pointer. Only the local copy changes, so the grid
+    /// animates without the database re-sorting under the cursor.
+    private func reorderSnippetsLocally(to target: Snippet) {
+        let dragged = Set(draggedSnippetIDs)
+        guard isReorderable, !dragged.contains(target.persistentModelID) else { return }
         var ordered = gridSnippets
-        guard let from = ordered.firstIndex(where: { $0.persistentModelID == dragged.persistentModelID }),
-              let to = ordered.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) else { return }
+        let moving = IndexSet(ordered.indices.filter { dragged.contains(ordered[$0].persistentModelID) })
+        guard let from = moving.first,
+              let to = ordered.firstIndex(where: { $0.persistentModelID == target.persistentModelID })
+        else { return }
 
         // Moving toward a later position must insert *after* the target, hence
         // the +1; moving earlier inserts at the target. This makes dragging
         // down/right behave the same as up/left.
-        ordered.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
+        ordered.move(fromOffsets: moving, toOffset: to > from ? to + 1 : to)
 
         withAnimation(.snappy(duration: 0.18)) {
             displayOrder = ordered
         }
     }
 
-    /// On drop, persist the local order into `sortIndex`, preserving the slots
-    /// of any snippets filtered out of the current view.
+    /// macOS 26: on drop, persist the live order.
     private func commitSnippetOrder() {
-        draggedSnippet = nil
+        draggedSnippetIDs = []
         // A drop in a non-reorderable view (Frequently Used, Date Added
         // grouping) must not rewrite the manual order with that view's own.
-        guard isReorderable else { return }
-        let shown = displayOrder
-        guard !shown.isEmpty else { return }
+        guard isReorderable, !displayOrder.isEmpty else { return }
+        saveOrder(displayOrder)
+    }
+
+    /// macOS 27: a reorder container reported a move.
+    private func moveSnippets(_ ids: [PersistentIdentifier], before target: PersistentIdentifier?) {
+        var ordered = filteredSnippets
+        let moving = ordered.filter { ids.contains($0.persistentModelID) }
+        ordered.removeAll { ids.contains($0.persistentModelID) }
+        let index = target.flatMap { id in ordered.firstIndex { $0.persistentModelID == id } }
+            ?? ordered.endIndex
+        ordered.insert(contentsOf: moving, at: index)
+        withAnimation(.snappy(duration: 0.18)) { saveOrder(ordered) }
+    }
+
+    /// Write the shown order into `sortIndex`, keeping the slots of any
+    /// snippets filtered out of the current view.
+    private func saveOrder(_ shown: [Snippet]) {
         let shownIDs = Set(shown.map(\.persistentModelID))
         var iterator = shown.makeIterator()
 
@@ -1165,10 +1222,13 @@ struct ContentView: View {
         try? modelContext.save()
     }
 
-    /// Reassign a snippet's category (nil = uncategorized).
-    private func move(_ snippet: Snippet, to category: Category?) {
-        snippet.category = category
+    /// Reassign dragged snippets' category (nil = uncategorized).
+    private func refile(_ ids: [PersistentIdentifier], to category: Category?) {
+        for snippet in allSnippets where ids.contains(snippet.persistentModelID) {
+            snippet.category = category
+        }
         try? modelContext.save()
+        draggedSnippetIDs = []
     }
 
     private func exportLibrary() {
@@ -1353,64 +1413,72 @@ private struct ClearsSelectionOnTap: ViewModifier {
     }
 }
 
-/// A category row accepts a dropped snippet to refile it into this category.
-struct CategoryDropDelegate: DropDelegate {
-    let target: Category
-    @Binding var draggedSnippet: Snippet?
-    @Binding var highlightedCategoryID: PersistentIdentifier?
-    let onRefile: (Snippet) -> Void
-
-    func validateDrop(info: DropInfo) -> Bool { draggedSnippet != nil }
-
-    func dropEntered(info: DropInfo) {
-        if draggedSnippet != nil {
-            highlightedCategoryID = target.persistentModelID
-        }
-    }
-
-    func dropExited(info: DropInfo) {
-        if highlightedCategoryID == target.persistentModelID {
-            highlightedCategoryID = nil
-        }
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        if let snippet = draggedSnippet {
-            onRefile(snippet)
-        }
-        draggedSnippet = nil
-        highlightedCategoryID = nil
-        return true
+extension View {
+    /// A sidebar row that takes cards dragged from the grid (but not text
+    /// from other apps) and hands over their IDs from the drag session.
+    func snippetDropTarget(isTargeted: Binding<Bool>,
+                           perform: @escaping ([PersistentIdentifier]) -> Void) -> some View {
+        self
+            .dropDestination(for: String.self) { _, session in
+                isTargeted.wrappedValue = false
+                perform(session.localSession?.draggedItemIDs(for: PersistentIdentifier.self) ?? [])
+            }
+            .dropConfiguration { session in
+                DropConfiguration(operation: session.localSession == nil ? .forbidden : .move)
+            }
+            .onDropSessionUpdated { session in
+                switch session.phase {
+                case .entering, .active: isTargeted.wrappedValue = session.localSession != nil
+                default:                 isTargeted.wrappedValue = false
+                }
+            }
     }
 }
 
-/// The "All Snippets" row accepts a dropped snippet to clear its category.
-struct UncategorizeDropDelegate: DropDelegate {
-    @Binding var draggedSnippet: Snippet?
-    @Binding var highlighted: Bool
-    let onUncategorize: (Snippet) -> Void
+/// macOS 27: the flat grid's reorder container. `target` is the card the
+/// moved ones now sit before, or nil for the end.
+private struct FlatReorderContainer: ViewModifier {
+    let isEnabled: Bool
+    let move: (_ sources: [PersistentIdentifier], _ target: PersistentIdentifier?) -> Void
 
-    func validateDrop(info: DropInfo) -> Bool { draggedSnippet != nil }
-
-    func dropEntered(info: DropInfo) {
-        if draggedSnippet != nil { highlighted = true }
+    func body(content: Content) -> some View {
+        if #available(macOS 27, *) {
+            content.reorderContainer(for: Snippet.self, isEnabled: isEnabled) { difference in
+                move(difference.sources, difference.destination.position.target)
+            }
+        } else {
+            content
+        }
     }
+}
 
-    func dropExited(info: DropInfo) { highlighted = false }
+/// macOS 27: the grouped grid's reorder container; each section is its own
+/// collection, identified by its group ID.
+private struct GroupedReorderContainer: ViewModifier {
+    let isEnabled: Bool
+    let move: (_ sources: [PersistentIdentifier], _ target: PersistentIdentifier?,
+               _ group: String) -> Void
 
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
+    func body(content: Content) -> some View {
+        if #available(macOS 27, *) {
+            content.reorderContainer(for: Snippet.self, in: String.self,
+                                     isEnabled: isEnabled) { difference in
+                move(difference.sources, difference.destination.position.target,
+                     difference.destination.collectionID)
+            }
+        } else {
+            content
+        }
     }
+}
 
-    func performDrop(info: DropInfo) -> Bool {
-        if let snippet = draggedSnippet { onUncategorize(snippet) }
-        draggedSnippet = nil
-        highlighted = false
-        return true
+@available(macOS 27, *)
+private extension ReorderDifference.Destination.Position {
+    var target: ItemID? {
+        switch self {
+        case .before(let id): id
+        case .end:            nil
+        }
     }
 }
 

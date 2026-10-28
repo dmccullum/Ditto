@@ -24,7 +24,8 @@ struct SnippetCard: View {
     /// Showing the copy confirmation.
     var isFlashing = false
     @Binding var isShowingPreview: Bool
-    @Binding var draggedSnippet: Snippet?
+    /// A drag from the grid is in progress (macOS 26's live reorder).
+    var isDragging = false
     /// How many snippets the context menu acts on: the whole selection when
     /// this card is in it, otherwise just this card.
     var actionCount = 1
@@ -34,7 +35,9 @@ struct SnippetCard: View {
     var onEdit: () -> Void
     var onTogglePin: () -> Void
     var onDelete: () -> Void
-    var onReorder: (_ dragged: Snippet, _ target: Snippet) -> Void
+    /// macOS 26 only: the drag passed over this card / was dropped on it.
+    /// On 27 the grid's reorder container handles both.
+    var onReorder: () -> Void
     var onCommit: () -> Void
 
     @State private var isHovering = false
@@ -97,20 +100,11 @@ struct SnippetCard: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .onHover { isHovering = $0 }
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovering)
-        .onDrag {
-            draggedSnippet = snippet
-            // Provide plain text so the snippet can also be dragged into other apps.
-            return NSItemProvider(object: snippet.content as NSString)
-        }
-        .onDrop(
-            of: [.text],
-            delegate: SnippetReorderDropDelegate(
-                target: snippet,
-                draggedSnippet: $draggedSnippet,
-                onReorder: onReorder,
-                onCommit: onCommit
-            )
-        )
+        // The grid's drag container supplies the payload (and the rest of
+        // the selection, when this card is selected).
+        .draggable(containerItemID: snippet.persistentModelID)
+        .modifier(LegacyReorderDrop(isDragging: isDragging, onReorder: onReorder,
+                                    onCommit: onCommit))
         .contextMenu {
             let many = actionCount > 1
             Button(many ? "Copy \(actionCount) Snippets" : "Copy", systemImage: "doc.on.doc",
@@ -386,21 +380,43 @@ struct AddSnippetCard: View {
     }
 }
 
-/// Reorders snippets live as one is dragged over another. We don't decode the
-/// dragged payload here — instead we read the shared `draggedSnippet` that was
-/// set when the drag began, which is far more reliable for in-app reordering.
-struct SnippetReorderDropDelegate: DropDelegate {
-    let target: Snippet
-    @Binding var draggedSnippet: Snippet?
-    let onReorder: (_ dragged: Snippet, _ target: Snippet) -> Void
+/// What a dragged card carries: its identity, for drops inside Ditto (which
+/// read the IDs from the drag session), and its text, for other apps.
+nonisolated struct DraggedSnippet: Transferable {
+    let id: PersistentIdentifier
+    let content: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        ProxyRepresentation(exporting: \.content)
+    }
+}
+
+/// macOS 26: reorders live as a drag passes over each card and commits on
+/// drop. On 27, `reorderable()` and the grid's reorder container do this.
+private struct LegacyReorderDrop: ViewModifier {
+    let isDragging: Bool
+    let onReorder: () -> Void
     let onCommit: () -> Void
 
-    func validateDrop(info: DropInfo) -> Bool { draggedSnippet != nil }
+    func body(content: Content) -> some View {
+        if #available(macOS 27, *) {
+            content
+        } else {
+            content.onDrop(of: [.text], delegate: SnippetReorderDropDelegate(
+                isDragging: isDragging, onReorder: onReorder, onCommit: onCommit))
+        }
+    }
+}
+
+private struct SnippetReorderDropDelegate: DropDelegate {
+    let isDragging: Bool
+    let onReorder: () -> Void
+    let onCommit: () -> Void
+
+    func validateDrop(info: DropInfo) -> Bool { isDragging }
 
     func dropEntered(info: DropInfo) {
-        guard let dragged = draggedSnippet,
-              dragged.persistentModelID != target.persistentModelID else { return }
-        onReorder(dragged, target)
+        if isDragging { onReorder() }
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
