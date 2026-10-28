@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import AppKit
 import AppIntents
+import DMKit
 
 /// Lets the app-level menu commands (⌘N etc.) ask the main window to act.
 @Observable
@@ -119,6 +120,11 @@ struct DittoApp: App {
             SettingsView()
                 .environment(settings)
                 .modelContainer(container)
+        }
+
+        // App › About Ditto.
+        AboutScene(links: AboutLinks(sourceCode: URL(string: "https://github.com/dmccullum/Ditto"))) {
+            AboutSignature()
         }
 
         // In-app user guide (Help → Ditto Help). A single-instance window.
@@ -250,13 +256,6 @@ struct DittoCommands: Commands {
             .keyboardShortcut("?", modifiers: .command)
         }
 
-        // Replace the default About panel with our custom window.
-        CommandGroup(replacing: .appInfo) {
-            Button("About Ditto") {
-                NSApp.activate()
-                AboutWindowController.shared.show()
-            }
-        }
     }
 
     private func showMainWindow() {

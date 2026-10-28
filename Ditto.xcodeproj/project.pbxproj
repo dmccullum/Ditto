@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DDDD00010000000000000001 /* DMKit in Frameworks */ = {isa = PBXBuildFile; productRef = DDDD00030000000000000003 /* DMKit */; };
 		BBBB00310000000000000031 /* DittoWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBBB00010000000000000001 /* DittoWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BBBB00410000000000000041 /* DittoiOSWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBBB00020000000000000002 /* DittoiOSWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -154,6 +155,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DDDD00010000000000000001 /* DMKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -259,6 +261,7 @@
 			);
 			name = Ditto;
 			packageProductDependencies = (
+				DDDD00030000000000000003 /* DMKit */,
 			);
 			productName = "QuickCopy 2";
 			productReference = CEE2CDAF2FC86C9100AF51F7 /* Ditto.app */;
@@ -395,6 +398,9 @@
 			);
 			mainGroup = CEE2CDA62FC86C9100AF51F7;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DDDD00020000000000000002 /* XCLocalSwiftPackageReference "../DMKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CEE2CDB02FC86C9100AF51F7 /* Products */;
 			projectDirPath = "";
@@ -1057,6 +1063,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		DDDD00020000000000000002 /* XCLocalSwiftPackageReference "../DMKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../DMKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DDDD00030000000000000003 /* DMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DDDD00020000000000000002 /* XCLocalSwiftPackageReference "../DMKit" */;
+			productName = DMKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = CEE2CDA72FC86C9100AF51F7 /* Project object */;
 }
