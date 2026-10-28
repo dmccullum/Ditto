@@ -83,6 +83,7 @@ struct DittoApp: App {
     let container: ModelContainer = DittoStore.container
     @State private var commands = AppCommands()
     @State private var settings = AppSettings()
+    @State private var helpNavigation = HelpNavigation()
 
     init() {
         // Keep Spotlight and the Shortcuts snippet vocabulary in sync with
@@ -101,7 +102,7 @@ struct DittoApp: App {
         .defaultSize(width: 960, height: 640)
         .modelContainer(container)
         .commands {
-            DittoCommands(commands: commands, settings: settings)
+            DittoCommands(commands: commands, helpNavigation: helpNavigation, settings: settings)
         }
 
         // The always-available menu bar dropdown for quick copying.
@@ -130,6 +131,7 @@ struct DittoApp: App {
         // In-app user guide (Help → Ditto Help). A single-instance window.
         Window("Ditto Help", id: "help") {
             HelpView()
+                .environment(helpNavigation)
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
@@ -147,6 +149,7 @@ struct DittoCommands: Commands {
     @FocusedValue(\.categoryActions) private var categoryActions
     @FocusedValue(\.findSnippets) private var findSnippets
     var commands: AppCommands
+    var helpNavigation: HelpNavigation
     @Bindable var settings: AppSettings
 
     var body: some Commands {
@@ -247,15 +250,26 @@ struct DittoCommands: Commands {
             .disabled(categoryActions == nil)
         }
 
-        // Replace the default Help item with our in-app guide.
+        // The family Help menu, in FamilyHelpCommands' order.
+        // TODO(DMKit): FamilyHelpCommands only takes a URL for “<App> Help”, and
+        // Ditto's guide is an in-app window. Switch to it once `help` accepts a
+        // Target (.action) as Keyboard Shortcuts does.
         CommandGroup(replacing: .help) {
-            Button("Ditto Help") {
-                openWindow(id: "help")
-                NSApp.activate()
+            Button("Ditto Help") { showHelp() }
+                .keyboardShortcut("?", modifiers: .command)
+            Divider()
+            Button("Keyboard Shortcuts") { showHelp(at: .shortcuts) }
+            Button("Report an Issue…") {
+                NSWorkspace.shared.open(URL(string: "https://github.com/dmccullum/Ditto/issues/new")!)
             }
-            .keyboardShortcut("?", modifiers: .command)
         }
 
+    }
+
+    private func showHelp(at section: HelpNavigation.Section? = nil) {
+        helpNavigation.pendingSection = section
+        openWindow(id: "help")
+        NSApp.activate()
     }
 
     private func showMainWindow() {
