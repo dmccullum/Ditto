@@ -45,13 +45,19 @@ struct CategoryEditor: View {
                 Section("Color") {
                     LazyVGrid(columns: columns, spacing: 8) {
                         ForEach(SnippetColor.allCases) { swatch in
-                            Circle()
-                                .fill(swatch.color)
-                                .frame(width: 30, height: 30)
-                                .overlay(
-                                    Circle().strokeBorder(.primary, lineWidth: colorName == swatch.rawValue ? 2.5 : 0)
-                                )
-                                .onTapGesture { colorName = swatch.rawValue }
+                            let selected = colorName == swatch.rawValue
+                            Button { colorName = swatch.rawValue } label: {
+                                Circle()
+                                    .fill(swatch.color)
+                                    .frame(width: 30, height: 30)
+                                    .overlay(
+                                        Circle().strokeBorder(.primary, lineWidth: selected ? 2.5 : 0)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(swatch.displayName)
+                            .accessibilityAddTraits(selected ? .isSelected : [])
+                            .help(swatch.displayName)
                         }
                     }
                     .padding(.vertical, 4)
@@ -60,13 +66,18 @@ struct CategoryEditor: View {
                 Section("Icon") {
                     LazyVGrid(columns: columns, spacing: 8) {
                         ForEach(CategorySymbol.options, id: \.self) { symbol in
-                            Image(systemName: symbol)
-                                .font(.system(size: 16))
-                                .frame(width: 38, height: 38)
-                                .foregroundStyle(symbolName == symbol ? .white : accent)
-                                .background(symbolName == symbol ? accent : accent.opacity(0.12))
-                                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                                .onTapGesture { symbolName = symbol }
+                            let selected = symbolName == symbol
+                            Button { symbolName = symbol } label: {
+                                Image(systemName: symbol)
+                                    .font(.system(size: 16))
+                                    .frame(width: 38, height: 38)
+                                    .foregroundStyle(selected ? .white : accent)
+                                    .background(selected ? accent : accent.opacity(0.12))
+                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(CategorySymbol.spokenName(for: symbol))
+                            .accessibilityAddTraits(selected ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 4)

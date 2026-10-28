@@ -55,6 +55,13 @@ enum SnippetColor: String, CaseIterable, Identifiable {
 
 /// A curated set of SF Symbols that read well as category icons.
 enum CategorySymbol {
+    /// A symbol name as VoiceOver should read it: "envelope.fill" → "envelope".
+    static func spokenName(for symbol: String) -> String {
+        symbol.split(separator: ".")
+            .filter { $0 != "fill" }
+            .joined(separator: " ")
+    }
+
     static let options: [String] = [
         // Text & writing
         "textformat", "paragraph", "square.and.pencil", "note.text",
