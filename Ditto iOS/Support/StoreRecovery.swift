@@ -10,12 +10,10 @@
 import Foundation
 
 enum StoreRecovery {
-    private static let storeFiles = ["default.store", "default.store-shm", "default.store-wal"]
-
     /// Rename the existing store files with a timestamped `.corrupt-…` suffix.
     static func backupStore() {
-        guard let support = FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
+        let support = SharedStore.directory
+        let storeFiles = SharedStore.storeFiles
 
         let stamp = ISO8601DateFormatter().string(from: .now)
             .replacingOccurrences(of: ":", with: "-")

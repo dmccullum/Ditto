@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BBBB00310000000000000031 /* DittoWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBBB00010000000000000001 /* DittoWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BBBB00410000000000000041 /* DittoiOSWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBBB00020000000000000002 /* DittoiOSWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		CEE2CDBD2FC86C9300AF51F7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,13 +26,54 @@
 			remoteGlobalIDString = CEE2CDAE2FC86C9100AF51F7;
 			remoteInfo = "QuickCopy 2";
 		};
+		BBBB00320000000000000032 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CEE2CDA72FC86C9100AF51F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BBBB00100000000000000010;
+			remoteInfo = DittoWidgets;
+		};
+		BBBB00420000000000000042 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CEE2CDA72FC86C9100AF51F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BBBB00200000000000000020;
+			remoteInfo = DittoiOSWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BBBB00300000000000000030 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BBBB00310000000000000031 /* DittoWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBBB00400000000000000040 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BBBB00410000000000000041 /* DittoiOSWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		AAAA00010000000000000001 /* DittoiOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DittoiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEE2CDAF2FC86C9100AF51F7 /* Ditto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ditto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEE2CDBC2FC86C9300AF51F7 /* DittoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DittoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEE2CDC62FC86C9300AF51F7 /* DittoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DittoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBBB00010000000000000001 /* DittoWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DittoWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBBB00020000000000000002 /* DittoiOSWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DittoiOSWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -38,18 +84,48 @@
 			);
 			target = CEE2CDAE2FC86C9100AF51F7 /* Ditto */;
 		};
+		BBBB00040000000000000004 /* Exceptions for "Ditto" folder in "DittoWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/Category.swift,
+				Models/Snippet.swift,
+				Support/Clipboard.swift,
+				Support/SharedStore.swift,
+				Support/SnippetColor.swift,
+			);
+			target = BBBB00100000000000000010 /* DittoWidgets */;
+		};
+		BBBB00050000000000000005 /* Exceptions for "Ditto iOS" folder in "DittoiOSWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/Category.swift,
+				Models/Snippet.swift,
+				Support/SharedStore.swift,
+				Support/SnippetColor.swift,
+			);
+			target = BBBB00200000000000000020 /* DittoiOSWidgets */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AAAA00020000000000000002 /* Ditto iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BBBB00050000000000000005 /* Exceptions for "Ditto iOS" folder in "DittoiOSWidgets" target */,
+			);
 			path = "Ditto iOS";
+			sourceTree = "<group>";
+		};
+		BBBB00030000000000000003 /* Ditto Widgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Ditto Widgets";
 			sourceTree = "<group>";
 		};
 		CEE2CDB12FC86C9100AF51F7 /* Ditto */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				CE2B1AAC2FCDC5AF00E59AAA /* Exceptions for "Ditto" folder in "Ditto" target */,
+				BBBB00040000000000000004 /* Exceptions for "Ditto" folder in "DittoWidgets" target */,
 			);
 			path = Ditto;
 			sourceTree = "<group>";
@@ -95,6 +171,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BBBB00120000000000000012 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBBB00220000000000000022 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -103,6 +193,7 @@
 			children = (
 				CEE2CDB12FC86C9100AF51F7 /* Ditto */,
 				AAAA00020000000000000002 /* Ditto iOS */,
+				BBBB00030000000000000003 /* Ditto Widgets */,
 				CEE2CDBF2FC86C9300AF51F7 /* QuickCopy 2Tests */,
 				CEE2CDC92FC86C9300AF51F7 /* QuickCopy 2UITests */,
 				CEE2CDB02FC86C9100AF51F7 /* Products */,
@@ -114,6 +205,8 @@
 			children = (
 				CEE2CDAF2FC86C9100AF51F7 /* Ditto.app */,
 				AAAA00010000000000000001 /* DittoiOS.app */,
+				BBBB00010000000000000001 /* DittoWidgets.appex */,
+				BBBB00020000000000000002 /* DittoiOSWidgets.appex */,
 				CEE2CDBC2FC86C9300AF51F7 /* DittoTests.xctest */,
 				CEE2CDC62FC86C9300AF51F7 /* DittoUITests.xctest */,
 			);
@@ -130,10 +223,12 @@
 				AAAA00030000000000000003 /* Sources */,
 				AAAA00040000000000000004 /* Frameworks */,
 				AAAA00050000000000000005 /* Resources */,
+				BBBB00400000000000000040 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BBBB00430000000000000043 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				AAAA00020000000000000002 /* Ditto iOS */,
@@ -152,10 +247,12 @@
 				CEE2CDAB2FC86C9100AF51F7 /* Sources */,
 				CEE2CDAC2FC86C9100AF51F7 /* Frameworks */,
 				CEE2CDAD2FC86C9100AF51F7 /* Resources */,
+				BBBB00300000000000000030 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BBBB00330000000000000033 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CEE2CDB12FC86C9100AF51F7 /* Ditto */,
@@ -213,6 +310,50 @@
 			productReference = CEE2CDC62FC86C9300AF51F7 /* DittoUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		BBBB00100000000000000010 /* DittoWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBBB00140000000000000014 /* Build configuration list for PBXNativeTarget "DittoWidgets" */;
+			buildPhases = (
+				BBBB00110000000000000011 /* Sources */,
+				BBBB00120000000000000012 /* Frameworks */,
+				BBBB00130000000000000013 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BBBB00030000000000000003 /* Ditto Widgets */,
+			);
+			name = DittoWidgets;
+			packageProductDependencies = (
+			);
+			productName = DittoWidgets;
+			productReference = BBBB00010000000000000001 /* DittoWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		BBBB00200000000000000020 /* DittoiOSWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBBB00240000000000000024 /* Build configuration list for PBXNativeTarget "DittoiOSWidgets" */;
+			buildPhases = (
+				BBBB00210000000000000021 /* Sources */,
+				BBBB00220000000000000022 /* Frameworks */,
+				BBBB00230000000000000023 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BBBB00030000000000000003 /* Ditto Widgets */,
+			);
+			name = DittoiOSWidgets;
+			packageProductDependencies = (
+			);
+			productName = DittoiOSWidgets;
+			productReference = BBBB00020000000000000002 /* DittoiOSWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -228,6 +369,12 @@
 					};
 					CEE2CDAE2FC86C9100AF51F7 = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					BBBB00100000000000000010 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					BBBB00200000000000000020 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 					CEE2CDBB2FC86C9300AF51F7 = {
 						CreatedOnToolsVersion = 26.2;
@@ -255,6 +402,8 @@
 			targets = (
 				CEE2CDAE2FC86C9100AF51F7 /* Ditto */,
 				AAAA00060000000000000006 /* DittoiOS */,
+				BBBB00100000000000000010 /* DittoWidgets */,
+				BBBB00200000000000000020 /* DittoiOSWidgets */,
 				CEE2CDBB2FC86C9300AF51F7 /* DittoTests */,
 				CEE2CDC52FC86C9300AF51F7 /* DittoUITests */,
 			);
@@ -284,6 +433,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CEE2CDC42FC86C9300AF51F7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBBB00130000000000000013 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBBB00230000000000000023 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -321,6 +484,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BBBB00110000000000000011 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBBB00210000000000000021 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -334,6 +511,16 @@
 			target = CEE2CDAE2FC86C9100AF51F7 /* Ditto */;
 			targetProxy = CEE2CDC72FC86C9300AF51F7 /* PBXContainerItemProxy */;
 		};
+		BBBB00330000000000000033 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BBBB00100000000000000010 /* DittoWidgets */;
+			targetProxy = BBBB00320000000000000032 /* PBXContainerItemProxy */;
+		};
+		BBBB00430000000000000043 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BBBB00200000000000000020 /* DittoiOSWidgets */;
+			targetProxy = BBBB00420000000000000042 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -342,6 +529,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Ditto;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/DittoiOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
@@ -373,6 +561,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Ditto;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/DittoiOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
@@ -433,6 +622,8 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DITTO_APP_GROUP = "$(TeamIdentifierPrefix)com.danielmccullum.ditto";
+				"DITTO_APP_GROUP[sdk=iphone*]" = group.com.danielmccullum.ditto;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -496,6 +687,8 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DITTO_APP_GROUP = "$(TeamIdentifierPrefix)com.danielmccullum.ditto";
+				"DITTO_APP_GROUP[sdk=iphone*]" = group.com.danielmccullum.ditto;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -526,6 +719,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6RTKH54L72;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
@@ -560,6 +754,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6RTKH54L72;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
@@ -591,6 +786,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6RTKH54L72;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
@@ -611,6 +807,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6RTKH54L72;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
@@ -630,6 +827,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6RTKH54L72;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "Daniel-McCullum.QuickCopy-2UITests";
@@ -648,6 +846,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6RTKH54L72;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "Daniel-McCullum.QuickCopy-2UITests";
@@ -658,6 +857,136 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TEST_TARGET_NAME = "QuickCopy 2";
+			};
+			name = Release;
+		};
+		BBBB00150000000000000015 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/DittoWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6RTKH54L72;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/DittoWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.danielmccullum.ditto.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		BBBB00160000000000000016 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/DittoWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6RTKH54L72;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/DittoWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.danielmccullum.ditto.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		BBBB00250000000000000025 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/DittoiOSWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/DittoWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.danielmccullum.ditto.ios.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BBBB00260000000000000026 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/DittoiOSWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/DittoWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Ditto;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.danielmccullum.ditto.ios.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -705,6 +1034,24 @@
 			buildConfigurations = (
 				CEE2CDD72FC86C9300AF51F7 /* Debug */,
 				CEE2CDD82FC86C9300AF51F7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BBBB00140000000000000014 /* Build configuration list for PBXNativeTarget "DittoWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BBBB00150000000000000015 /* Debug */,
+				BBBB00160000000000000016 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BBBB00240000000000000024 /* Build configuration list for PBXNativeTarget "DittoiOSWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BBBB00250000000000000025 /* Debug */,
+				BBBB00260000000000000026 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

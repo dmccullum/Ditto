@@ -173,6 +173,9 @@ struct SnippetCard: View {
                         Text("\(snippet.content.count) chars")
                             .monospacedDigit()
                     }
+                    // Never wrap the count ("2,87 / 5 / chars") on a narrow card.
+                    .lineLimit(1)
+                    .fixedSize()
                     // Quiet at rest; full accent once the card is hovered.
                     .foregroundStyle(accent.opacity(isHovering ? 1 : 0.7))
                     .padding(.horizontal, 6)
@@ -186,10 +189,17 @@ struct SnippetCard: View {
                 .buttonStyle(.plain)
                 .onHover { isHoveringPreviewButton = $0 }
                 .help("Preview the full snippet")
-                Spacer()
-                Image(systemName: "doc.on.doc")
-                Text("Click to copy")
-                    .foregroundStyle(accent.opacity(isHovering ? 0.9 : 0.0))
+                Spacer(minLength: 4)
+                // The hint drops to just its icon when the card is too narrow
+                // for the label, rather than wrapping.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.on.doc")
+                        Text("Click to copy")
+                    }
+                    .fixedSize()
+                    Image(systemName: "doc.on.doc")
+                }
             }
             .font(.caption2.weight(.medium))
             .foregroundStyle(accent.opacity(isHovering ? 0.9 : 0.0))
