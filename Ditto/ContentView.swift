@@ -94,16 +94,17 @@ struct ContentView: View {
     @State private var dropTargetCategoryID: PersistentIdentifier?
     @State private var allRowIsDropTarget = false
 
-    // Finder-style selection in the card grid. A plain click copies and
-    // selects; ⌘-click and ⇧-click build a selection without copying. The
-    // anchor is where a ⇧-range starts; the cursor is where arrows move from.
+    // Finder-style selection in the card grid. A plain click only copies,
+    // but marks where ⇧-click and the arrow keys start from; ⌘-click,
+    // ⇧-click, arrows, and ⌘A build a visible selection. The anchor is where
+    // a ⇧-range starts; the cursor is where arrows move from.
     @State private var selectedSnippetIDs: Set<PersistentIdentifier> = []
     @State private var selectionAnchor: PersistentIdentifier?
     @State private var selectionCursor: PersistentIdentifier?
     @State private var scrollTarget: PersistentIdentifier?
     @State private var previewingSnippetID: PersistentIdentifier?
     @State private var flashingSnippetIDs: Set<PersistentIdentifier> = []
-    @State private var gridWidth: CGFloat = 0
+    @State private var gridSize: CGSize = .zero
     @FocusState private var gridIsFocused: Bool
 
     @State private var categoryPendingDeletion: Category?
@@ -320,7 +321,7 @@ struct ContentView: View {
                 snippetGrid
             }
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { gridWidth = $0 }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { gridSize = $0 }
         .focusable()
         .focusEffectDisabled()
         .focused($gridIsFocused)
@@ -429,8 +430,9 @@ struct ContentView: View {
                     }
                 }
                 .padding(Self.gridPadding)
-                .contentShape(Rectangle())
-                .onTapGesture { clearSelection(); gridIsFocused = true }
+                .modifier(ClearsSelectionOnTap(minHeight: gridSize.height) {
+                    clearSelection(); gridIsFocused = true
+                })
             }
             .onChange(of: scrollTarget) { _, id in scroll(proxy, to: id) }
         }
@@ -581,8 +583,9 @@ struct ContentView: View {
                     }
                 }
                 .padding(Self.gridPadding)
-                .contentShape(Rectangle())
-                .onTapGesture { clearSelection(); gridIsFocused = true }
+                .modifier(ClearsSelectionOnTap(minHeight: gridSize.height) {
+                    clearSelection(); gridIsFocused = true
+                })
             }
             .onChange(of: scrollTarget) { _, id in scroll(proxy, to: id) }
         }
@@ -910,7 +913,7 @@ struct ContentView: View {
     /// The grid as laid out on screen: rows of cards, section by section, so
     /// ↑/↓ land on the card visually above or below.
     private var gridRows: [[Snippet]] {
-        let available = gridWidth - Self.gridPadding * 2
+        let available = gridSize.width - Self.gridPadding * 2
         let columns = max(1, Int((available + Self.gridSpacing) / (cardMinWidth + Self.gridSpacing)))
         let sections = isGrouped
             ? snippetGroups.filter { !collapsedGroups.contains($0.id) }.map(\.snippets)
@@ -950,7 +953,9 @@ struct ContentView: View {
         } else if modifiers.contains(.shift), let anchor = selectionAnchor {
             selectRange(from: anchor, to: id)
         } else {
-            select(snippet)
+            selectedSnippetIDs = []
+            selectionAnchor = id
+            selectionCursor = id
             copy([snippet])
         }
     }
@@ -1331,6 +1336,20 @@ private struct ClickOutsideSearchMonitor: NSViewRepresentable {
         }
 
         isolated deinit { uninstall() }
+    }
+}
+
+/// Stretches the grid's content to fill the scroll view, so a click on the
+/// empty space below the last card clears the selection too.
+private struct ClearsSelectionOnTap: ViewModifier {
+    let minHeight: CGFloat
+    let action: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .top)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: action)
     }
 }
 

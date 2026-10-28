@@ -14,7 +14,7 @@ struct HelpView: View {
                 header
 
                 section("Snippets", icon: "doc.text.fill", tint: .blue) {
-                    bullet("Click a snippet card to copy it to the clipboard. The card stays selected.")
+                    bullet("Click a snippet card to copy it to the clipboard.")
                     bullet("⌘-click adds or removes cards from the selection; ⇧-click selects a range. Neither copies.")
                     bullet("With several cards selected, ⌘C copies them all: one per line for links, hashtags, and other short lines, with a blank line between longer snippets.")
                     bullet("Press ⌘N or the + button to add a new snippet.")
