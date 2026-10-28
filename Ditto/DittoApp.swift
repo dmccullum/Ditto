@@ -101,6 +101,7 @@ struct DittoApp: App {
             HelpView()
         }
         .windowResizability(.contentSize)
+        .commandsRemoved()
 
     }
 }
@@ -145,6 +146,7 @@ struct DittoCommands: Commands {
         // than a second "View" menu).
         CommandGroup(after: .sidebar) {
             Button("Default Size") { zoomActions?.reset() }
+                .keyboardShortcut("0", modifiers: .command)
                 .disabled(zoomActions == nil)
             Button("Zoom In") { zoomActions?.zoomIn() }
                 .keyboardShortcut("+", modifiers: .command)
@@ -160,12 +162,6 @@ struct DittoCommands: Commands {
             }
             .pickerStyle(.inline)
             Divider()
-        }
-
-        // A reliable way back to the window after closing it.
-        CommandGroup(after: .windowList) {
-            Button("Ditto Window") { showMainWindow() }
-                .keyboardShortcut("0", modifiers: .command)
         }
 
         // Replace the default Help item with our in-app guide.

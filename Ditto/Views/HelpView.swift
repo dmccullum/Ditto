@@ -40,7 +40,7 @@ struct HelpView: View {
                 }
 
                 section("Size & Grouping", icon: "square.grid.2x2.fill", tint: .green) {
-                    bullet("Zoom In / Out (⌘+ / ⌘–) changes card size; Default Size resets it. Find these in the View menu or the toolbar.")
+                    bullet("Zoom In / Out (⌘+ / ⌘–) changes card size; Default Size (⌘0) resets it. Find these in the View menu or the toolbar.")
                     bullet("The grid reflows columns to fit the window automatically.")
                     bullet("In All Snippets, use View → Group By to group cards by Category or Date Added. Sections are collapsible.")
                 }
@@ -64,6 +64,7 @@ struct HelpView: View {
                     shortcut("⌘F", "Quick search")
                     shortcut("⌘↩", "Show search result in list")
                     shortcut("⌘+ / ⌘–", "Zoom in / out")
+                    shortcut("⌘0", "Default card size")
                     shortcut("⇧⌘E", "Export library")
                     shortcut("↑ ↓ ← →", "Move the card selection (⇧ extends it)")
                     shortcut("↩", "Copy the selected cards")
@@ -71,7 +72,6 @@ struct HelpView: View {
                     shortcut("⌘A", "Select all cards")
                     shortcut("⌫", "Delete the selected cards")
                     shortcut("⌘Z / ⇧⌘Z", "Undo / redo")
-                    shortcut("⌘0", "Show the Ditto window")
                 }
             }
             .padding(28)
