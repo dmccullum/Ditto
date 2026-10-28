@@ -827,7 +827,7 @@ struct ContentView: View {
                     .frame(maxHeight: 360)
                     .onChange(of: quickSearchSelection) { _, id in
                         guard let id else { return }
-                        withAnimation(.easeOut(duration: 0.12)) {
+                        withDMAnimation(.snappy) {
                             proxy.scrollTo(id, anchor: .center)
                         }
                     }
@@ -851,8 +851,12 @@ struct ContentView: View {
         .background {
             ClickOutsideSearchMonitor(onClickOutside: dismissQuickSearch)
         }
-        .floatingGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .floatingGlass(in: RoundedRectangle(cornerRadius: Self.quickSearchRadius, style: .continuous))
     }
+
+    private static let quickSearchRadius = DMRadius.large
+    /// Rows sit 6 points in from the panel edge, so they take its radius less 6.
+    private static let quickSearchRowRadius = DMRadius.inner(outer: quickSearchRadius, padding: 6)
 
     private func quickSearchRow(_ snippet: Snippet) -> some View {
         let selected = quickSearchSelection == snippet.persistentModelID
@@ -887,7 +891,7 @@ struct ContentView: View {
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(selected ? accent.opacity(0.18) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        in: RoundedRectangle(cornerRadius: Self.quickSearchRowRadius, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -898,13 +902,13 @@ struct ContentView: View {
 
     private func beginQuickSearch(with characters: String = "") {
         quickSearchText = characters
-        isQuickSearchPresented = true
+        withDMAnimation(.smooth) { isQuickSearchPresented = true }
         quickSearchSelection = SnippetSearch.results(for: characters, in: allSnippets).first?.persistentModelID
         Task { quickSearchIsFocused = true }
     }
 
     private func dismissQuickSearch() {
-        withAnimation(.easeOut(duration: 0.12)) { isQuickSearchPresented = false }
+        withDMAnimation(.smooth) { isQuickSearchPresented = false }
         quickSearchText = ""
         quickSearchSelection = nil
     }
