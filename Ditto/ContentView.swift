@@ -1341,8 +1341,10 @@ private struct TypeToSearchMonitor: NSViewRepresentable {
     }
 }
 
-/// Observes clicks throughout the window, consuming the first outside click so
-/// it dismisses quick search without activating the control underneath.
+/// Observes clicks throughout the window and dismisses quick search on any
+/// click outside it in the content area. Clicks always reach the control
+/// underneath; toolbar clicks leave search open, so the search button can
+/// toggle it closed.
 private struct ClickOutsideSearchMonitor: NSViewRepresentable {
     let onClickOutside: () -> Void
 
@@ -1375,14 +1377,13 @@ private struct ClickOutsideSearchMonitor: NSViewRepresentable {
         func install() {
             monitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
                 [weak self] event in
-                guard let self, let view, event.window === view.window else { return event }
+                guard let self, let view, let window = view.window, event.window === window,
+                      window.contentLayoutRect.contains(event.locationInWindow) else { return event }
                 let pointInPanel = view.convert(event.locationInWindow, from: nil)
                 guard !view.bounds.contains(pointInPanel) else { return event }
 
                 Task { self.onClickOutside() }
-                // Treat search like a modal layer: the first outside click
-                // dismisses it without activating the control underneath.
-                return nil
+                return event
             }
         }
 
