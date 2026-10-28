@@ -122,7 +122,9 @@ struct ContentView: View {
         NavigationSplitView {
             sidebar
         } detail: {
+            // Wide enough for quick search (520 pt) and the largest cards.
             detail
+                .frame(minWidth: 540, minHeight: 360)
                 .overlay(alignment: .top) { bannerView }
                 .overlay(alignment: .top) {
                     if isQuickSearchPresented {

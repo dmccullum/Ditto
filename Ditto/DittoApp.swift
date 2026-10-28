@@ -108,6 +108,7 @@ struct DittoApp: App {
                 .environment(commands)
                 .environment(settings)
         }
+        .defaultSize(width: 960, height: 640)
         .modelContainer(container)
         .commands {
             DittoCommands(commands: commands, settings: settings)
