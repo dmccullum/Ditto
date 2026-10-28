@@ -137,6 +137,12 @@ struct ContentView: View {
                     beginQuickSearch(with: characters)
                 }
             }
+            // ⌘= also zooms in: the menu's ⌘+ needs Shift on US layouts.
+            Button("Zoom In") { sizeLevel = min(Self.maxSizeLevel, sizeLevel + 1) }
+                .keyboardShortcut("=", modifiers: .command)
+                .disabled(sizeLevel >= Self.maxSizeLevel)
+                .opacity(0)
+                .accessibilityHidden(true)
         }
         .sheet(item: $editingSnippet) { SnippetEditor(snippet: $0) }
         .sheet(isPresented: $isCreatingSnippet) {
