@@ -2,8 +2,8 @@
 //  AboutSignature.swift
 //  Ditto
 //
-//  The About window's signature moment: the Ditto mark, which splits in two
-//  when clicked, as it does on a card's “Copied” overlay.
+//  The About window's signature moment: the Ditto mark on its icon tile,
+//  which splits in two when clicked, as it does on a card's “Copied” overlay.
 //
 
 import SwiftUI
@@ -15,11 +15,9 @@ struct AboutSignature: View {
 
     var body: some View {
         Button(action: play) {
-            DittoGlyph(spread: spread)
-                .foregroundStyle(.tint)
+            // The icon's own colored art at icon size, since it takes the icon's place.
+            DittoMarkTile(size: 96, spread: spread)
                 .opacity(opacity)
-                // Icon size, since it takes the icon's place.
-                .frame(width: 96, height: 96)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
