@@ -41,10 +41,10 @@ enum DemoLibrary {
             Seed(title: "Coffee shop", content: "#coffeetime #latteart #coffeelover #morningritual #thirdwave", copies: 3)
         ]),
         ("Links", "link", "blue", [
-            Seed(title: "Link in bio", content: "https://fernwood.studio/links", copies: 38, pinned: true),
-            Seed(title: "Booking calendar", content: "https://fernwood.studio/book", copies: 21),
-            Seed(title: "Newsletter", content: "https://fernwood.studio/newsletter", copies: 15),
-            Seed(title: "Portfolio", content: "https://fernwood.studio/work", copies: 6)
+            Seed(title: "Link in bio", content: "https://danielm.cc", copies: 38, pinned: true),
+            Seed(title: "Mac apps", content: "https://danielm.cc/apps", copies: 21),
+            Seed(title: "Photography", content: "https://danielm.cc/photo", copies: 15),
+            Seed(title: "Social work", content: "https://danielm.cc/social", copies: 6)
         ]),
         ("Email Replies", "envelope.fill", "teal", [
             Seed(title: "Thanks for reaching out", content: """
