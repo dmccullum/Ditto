@@ -125,8 +125,9 @@ struct DittoApp: App {
                 .modelContainer(container)
         }
 
-        // App › About Ditto.
-        AboutScene(links: AboutLinks(sourceCode: URL(string: "https://github.com/dmccullum/Ditto"))) {
+        // App › About Ditto. The mark is the icon art, so it stands in for the icon.
+        AboutScene(links: AboutLinks(sourceCode: URL(string: "https://github.com/dmccullum/Ditto")),
+                   showsIcon: false) {
             AboutSignature()
         }
 

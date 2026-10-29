@@ -18,7 +18,8 @@ struct AboutSignature: View {
             DittoGlyph(spread: spread)
                 .foregroundStyle(.tint)
                 .opacity(opacity)
-                .frame(width: 52, height: 52)
+                // Icon size, since it takes the icon's place.
+                .frame(width: 96, height: 96)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
