@@ -22,10 +22,8 @@ struct AboutSignature: View {
     @State private var stack = CopyStack()
     @State private var spread: CGFloat = 1
     @State private var markOpacity: Double = 1
-    /// The signature's frame in the window, to place the pointer against the mark.
+    /// The signature's frame in the space `aboutPointerLocation` is measured in, to place the pointer against the mark.
     @State private var frameInWindow: CGRect = .zero
-    /// The pointer over the signature itself, in its own coordinates.
-    @State private var localPointer: CGPoint?
 
     static let size = CGSize(width: 330, height: 128)
     static let markSize: CGFloat = 96
@@ -45,13 +43,7 @@ struct AboutSignature: View {
             }
         }
         .frame(width: Self.size.width, height: Self.size.height)
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frameInWindow = $0 }
-        .onContinuousHover { phase in
-            switch phase {
-            case .active(let location): localPointer = location
-            case .ended: localPointer = nil
-            }
-        }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: AboutView<EmptyView>.pointerSpace) } action: { frameInWindow = $0 }
         .onAppear { stack.undoManager = undoManager }
         .onChange(of: undoManager) { _, manager in stack.undoManager = manager }
         .onDisappear { stack.forgetUndo() }
@@ -89,22 +81,9 @@ struct AboutSignature: View {
     /// reaches 1 about 180 points out. Zero when it's outside the window or
     /// with Reduce Motion.
     private var lean: CGVector {
-        guard !reduceMotion else { return .zero }
-        let offset: CGPoint
-        if let localPointer {
-            offset = CGPoint(x: localPointer.x - Self.markCenter.x, y: localPointer.y - Self.markCenter.y)
-        } else if let pointer, frameInWindow != .zero {
-            // TODO(DMKit): `aboutPointerLocation` is in AboutView's content stack's
-            // coordinates, which may sit below the hidden title bar's safe area,
-            // while `.global` here is the hosting view's. A named coordinate space
-            // from AboutView would line them up exactly; until then the two can
-            // differ by the title bar's height, which only biases the lean slightly
-            // while the pointer is outside the signature.
-            offset = CGPoint(x: pointer.x - frameInWindow.minX - Self.markCenter.x,
+        guard !reduceMotion, let pointer, frameInWindow != .zero else { return .zero }
+        let offset = CGPoint(x: pointer.x - frameInWindow.minX - Self.markCenter.x,
                              y: pointer.y - frameInWindow.minY - Self.markCenter.y)
-        } else {
-            return .zero
-        }
         let dx = offset.x / 180, dy = offset.y / 180
         let length = max(1, (dx * dx + dy * dy).squareRoot())
         return CGVector(dx: dx / length, dy: dy / length)
