@@ -252,19 +252,16 @@ struct DittoCommands: Commands {
             .disabled(categoryActions == nil)
         }
 
-        // The family Help menu, in FamilyHelpCommands' order.
-        // TODO(DMKit): FamilyHelpCommands only takes a URL for “<App> Help”, and
-        // Ditto's guide is an in-app window. Switch to it once `help` accepts a
-        // Target (.action) as Keyboard Shortcuts does.
-        CommandGroup(replacing: .help) {
-            Button("Ditto Help") { showHelp() }
-                .keyboardShortcut("?", modifiers: .command)
-            Divider()
-            Button("Keyboard Shortcuts") { showHelp(at: .shortcuts) }
-            Button("Report an Issue…") {
-                NSWorkspace.shared.open(URL(string: "https://github.com/dmccullum/Ditto/issues/new")!)
-            }
-        }
+        // App › About Ditto opens the AboutScene window.
+        AboutCommands()
+
+        // The family Help menu. Ditto Help and Keyboard Shortcuts open the
+        // in-app guide; Report an Issue… opens GitHub.
+        FamilyHelpCommands(
+            help: .action { showHelp() },
+            keyboardShortcuts: .action { showHelp(at: .shortcuts) },
+            reportIssue: URL(string: "https://github.com/dmccullum/Ditto/issues/new")
+        )
 
     }
 
