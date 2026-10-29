@@ -90,6 +90,10 @@ struct DittoGlyph: View {
 struct DittoMarkTile: View {
     var size: CGFloat = 64
     var spread: CGFloat = 1
+    /// Slides the front half this far and the back half a third as far the
+    /// other way, so the copy peeks out from behind the original (About's
+    /// pointer parallax). Zero is the icon's resting art.
+    var parallax: CGSize = .zero
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.225, style: .continuous)
@@ -106,6 +110,7 @@ struct DittoMarkTile: View {
                                      Color(red: 0.50, green: 0.65, blue: 1.00)],
                             startPoint: .top, endPoint: .bottom
                         ))
+                        .offset(x: -parallax.width / 3, y: -parallax.height / 3)
                     DittoMarkHalf(isSecond: true, spread: spread)
                         .fill(LinearGradient(
                             colors: [Color(red: 0.70, green: 0.93, blue: 1.00),
@@ -114,6 +119,7 @@ struct DittoMarkTile: View {
                         ))
                         .opacity(0.85)
                         .shadow(color: .black.opacity(0.18), radius: size * 0.04, y: size * 0.02)
+                        .offset(parallax)
                 }
                 .padding(size * 0.17)
             }
