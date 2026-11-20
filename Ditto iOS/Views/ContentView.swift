@@ -164,101 +164,19 @@ struct ContentView: View {
 
     // MARK: - iPad sidebar
 
-    private var sidebarSelection: Binding<SidebarSelection?> {
-        Binding(get: { selection }, set: { if let value = $0 { selection = value } })
-    }
-
     private var sidebar: some View {
-        List(selection: sidebarSelection) {
-            Section {
-                sidebarRow("All Snippets", symbol: "tray.full.fill", tint: .blue,
-                           count: allSnippets.count)
-                    .tag(SidebarSelection.all)
-                sidebarRow("Pinned", symbol: "pin.fill", tint: .orange,
-                           count: allSnippets.filter(\.isPinned).count)
-                    .tag(SidebarSelection.pinned)
-                sidebarRow("Frequent", symbol: "flame.fill", tint: .red, count: nil)
-                    .tag(SidebarSelection.frequent)
-            }
-
-            Section("Categories") {
-                ForEach(categories) { category in
-                    sidebarRow(category.name, symbol: category.symbolName,
-                               tint: SnippetColor.color(for: category.colorName),
-                               count: category.snippets.count)
-                        .tag(SidebarSelection.category(category))
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { deletingCategory = category } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                            Button { editingCategory = category } label: {
-                                Label("Edit", systemImage: "pencil")
-                            }
-                            .tint(.blue)
-                        }
-                        .contextMenu {
-                            Button { editingCategory = category } label: {
-                                Label("Edit", systemImage: "pencil")
-                            }
-                            Button { duplicateCategory(category) } label: {
-                                Label("Duplicate", systemImage: "plus.square.on.square")
-                            }
-                            if let link = dittoImportLink(snippets: category.snippets, categories: [category]) {
-                                ShareLink(item: link) {
-                                    Label("Share Link", systemImage: "square.and.arrow.up")
-                                }
-                            }
-                            Divider()
-                            Button(role: .destructive) { deletingCategory = category } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                }
-                .onMove(perform: moveCategories)
-            }
-        }
-        .navigationTitle("Ditto")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { isShowingSettings = true } label: {
-                    Label("Settings", systemImage: "gearshape")
-                }
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button { isCreatingCategory = true } label: {
-                    Label("New Category", systemImage: "folder.badge.plus")
-                }
-            }
-            if case .all = selection {
-                ToolbarItem(placement: .secondaryAction) {
-                    Picker("Group By", selection: groupingBinding) {
-                        ForEach(SnippetGrouping.allCases) { option in
-                            Text(option.label).tag(option)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func sidebarRow(_ title: String, symbol: String, tint: Color, count: Int?) -> some View {
-        Label {
-            HStack {
-                Text(title)
-                Spacer()
-                if let count {
-                    Text("\(count)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-            }
-        } icon: {
-            Image(systemName: symbol)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(tint.gradient))
-        }
+        LibrarySidebar(
+            selection: $selection,
+            selected: selection,
+            actions: SidebarActions(
+                edit: { editingCategory = $0 },
+                duplicate: { duplicateCategory($0) },
+                delete: { deletingCategory = $0 },
+                newCategory: { isCreatingCategory = true },
+                showSettings: { isShowingSettings = true }
+            )
+        )
+        .equatable()
     }
 
     // MARK: - Banner
@@ -340,15 +258,6 @@ struct ContentView: View {
         modelContext.deleteUndoably(categories: [category], actionName: "Delete Category")
     }
 
-    private func moveCategories(from source: IndexSet, to destination: Int) {
-        var ordered = categories
-        ordered.move(fromOffsets: source, toOffset: destination)
-        for (index, category) in ordered.enumerated() where category.sortIndex != index {
-            category.sortIndex = index
-        }
-        try? modelContext.save()
-    }
-
     /// Duplicate a category and its snippets, then open the editor to rename.
     private func duplicateCategory(_ category: Category) {
         let nextCategoryIndex = (categories.map(\.sortIndex).max() ?? -1) + 1
@@ -373,6 +282,162 @@ struct ContentView: View {
         }
         selection = .category(copy)
         editingCategory = copy
+    }
+}
+
+/// What the iPad sidebar asks the library to do.
+private struct SidebarActions {
+    var edit: (Category) -> Void
+    var duplicate: (Category) -> Void
+    var delete: (Category) -> Void
+    var newCategory: () -> Void
+    var showSettings: () -> Void
+}
+
+/// The iPad sidebar. Its own view, equatable on the selection, so typing in
+/// search or copying a snippet doesn't rebuild every row.
+private struct LibrarySidebar: View, Equatable {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppSettings.self) private var settings
+    @Query(sort: \Category.sortIndex) private var categories: [Category]
+    @Query private var allSnippets: [Snippet]
+
+    @Binding var selection: SidebarSelection
+    /// The selection when the parent rendered, for `==`.
+    let selected: SidebarSelection
+    let actions: SidebarActions
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.selected == rhs.selected
+    }
+
+    private var listSelection: Binding<SidebarSelection?> {
+        Binding(get: { selection }, set: { if let value = $0 { selection = value } })
+    }
+
+    private var groupingBinding: Binding<SnippetGrouping> {
+        Binding(get: { settings.grouping }, set: { settings.grouping = $0 })
+    }
+
+    var body: some View {
+        // Count pinned snippets and each category's snippets in one pass.
+        var pinned = 0
+        var counts: [PersistentIdentifier: Int] = [:]
+        for snippet in allSnippets {
+            if snippet.isPinned { pinned += 1 }
+            if let id = snippet.category?.persistentModelID { counts[id, default: 0] += 1 }
+        }
+
+        return List(selection: listSelection) {
+            Section {
+                sidebarRow("All Snippets", symbol: "tray.full.fill", tint: .blue,
+                           count: allSnippets.count)
+                    .tag(SidebarSelection.all)
+                sidebarRow("Pinned", symbol: "pin.fill", tint: .orange, count: pinned)
+                    .tag(SidebarSelection.pinned)
+                sidebarRow("Frequent", symbol: "flame.fill", tint: .red, count: nil)
+                    .tag(SidebarSelection.frequent)
+            }
+
+            Section("Categories") {
+                ForEach(categories) { category in
+                    sidebarRow(category.name, symbol: category.symbolName,
+                               tint: SnippetColor.color(for: category.colorName),
+                               count: counts[category.persistentModelID] ?? 0)
+                        .tag(SidebarSelection.category(category))
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) { actions.delete(category) } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            Button { actions.edit(category) } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(.blue)
+                        }
+                        .contextMenu {
+                            CategoryMenuItems(category: category, actions: actions)
+                        }
+                }
+                .onMove(perform: moveCategories)
+            }
+        }
+        .navigationTitle("Ditto")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { actions.showSettings() } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button { actions.newCategory() } label: {
+                    Label("New Category", systemImage: "folder.badge.plus")
+                }
+            }
+            if case .all = selection {
+                ToolbarItem(placement: .secondaryAction) {
+                    Picker("Group By", selection: groupingBinding) {
+                        ForEach(SnippetGrouping.allCases) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func sidebarRow(_ title: String, symbol: String, tint: Color, count: Int?) -> some View {
+        Label {
+            HStack {
+                Text(title)
+                Spacer()
+                if let count {
+                    Text("\(count)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+        } icon: {
+            Image(systemName: symbol)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(tint.gradient))
+        }
+    }
+
+    private func moveCategories(from source: IndexSet, to destination: Int) {
+        var ordered = categories
+        ordered.move(fromOffsets: source, toOffset: destination)
+        for (index, category) in ordered.enumerated() where category.sortIndex != index {
+            category.sortIndex = index
+        }
+        try? modelContext.save()
+    }
+}
+
+/// A category's long-press menu. A separate view so the share link (which
+/// encodes every snippet in the category) is built when the menu is shown,
+/// not for every row on every redraw.
+private struct CategoryMenuItems: View {
+    let category: Category
+    let actions: SidebarActions
+
+    var body: some View {
+        Button { actions.edit(category) } label: {
+            Label("Edit", systemImage: "pencil")
+        }
+        Button { actions.duplicate(category) } label: {
+            Label("Duplicate", systemImage: "plus.square.on.square")
+        }
+        if let link = dittoImportLink(snippets: category.snippets, categories: [category]) {
+            ShareLink(item: link) {
+                Label("Share Link", systemImage: "square.and.arrow.up")
+            }
+        }
+        Divider()
+        Button(role: .destructive) { actions.delete(category) } label: {
+            Label("Delete", systemImage: "trash")
+        }
     }
 }
 

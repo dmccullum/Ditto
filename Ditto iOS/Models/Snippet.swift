@@ -40,8 +40,13 @@ final class Snippet {
         return first.isEmpty ? "Untitled snippet" : first
     }
 
+    /// The content on one line, for rows that show two lines at most. Only
+    /// the first 600 characters are processed, so a long snippet doesn't cost
+    /// a full pass over its text on every redraw.
     var preview: String {
-        content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let start = content.firstIndex { !$0.isWhitespace } ?? content.endIndex
+        return String(content[start...].prefix(600))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\n", with: " ")
     }
 

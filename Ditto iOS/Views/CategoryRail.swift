@@ -40,11 +40,17 @@ struct CategoryRail: View {
             items.append(RailItem(id: .frequent, title: "Frequent", symbol: "flame.fill",
                                   tint: .red, count: nil))
         }
+        // Count every category's snippets in one pass over the library,
+        // rather than loading each category's relationship.
+        var counts: [PersistentIdentifier: Int] = [:]
+        for snippet in allSnippets {
+            if let id = snippet.category?.persistentModelID { counts[id, default: 0] += 1 }
+        }
         for category in categories {
             items.append(RailItem(id: .category(category), title: category.name,
                                   symbol: category.symbolName,
                                   tint: SnippetColor.color(for: category.colorName),
-                                  count: category.snippets.count))
+                                  count: counts[category.persistentModelID] ?? 0))
         }
         return items
     }

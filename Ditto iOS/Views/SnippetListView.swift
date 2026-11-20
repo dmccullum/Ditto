@@ -58,13 +58,17 @@ struct SnippetListView: View {
     }
 
     var body: some View {
+        // Filter (or search) and group once per render; the list, the empty
+        // check, and the animation key all read these.
+        let shown = filtered
+        let groups = isGrouped ? snippetGroups(from: shown) : []
         Group {
-            if filtered.isEmpty {
+            if shown.isEmpty {
                 emptyState
             } else if isGrouped {
-                groupedList
+                groupedList(groups)
             } else {
-                flatList
+                flatList(shown)
             }
         }
         .overlay(alignment: .bottom) { undoToast }
@@ -117,18 +121,18 @@ struct SnippetListView: View {
 
     // MARK: - Lists
 
-    private var flatList: some View {
+    private func flatList(_ snippets: [Snippet]) -> some View {
         List {
-            ForEach(filtered) { snippet in rowView(snippet) }
+            ForEach(snippets) { snippet in rowView(snippet) }
                 .onMove(perform: isReorderable ? { moveSnippets(from: $0, to: $1) } : nil)
         }
         .listStyle(.plain)
-        .animation(.snappy, value: filtered.map(\.persistentModelID))
+        .animation(.snappy, value: snippets.map(\.persistentModelID))
     }
 
-    private var groupedList: some View {
+    private func groupedList(_ groups: [SnippetGroup]) -> some View {
         List {
-            ForEach(snippetGroups) { group in
+            ForEach(groups) { group in
                 Section {
                     if !collapsedGroups.contains(group.id) {
                         ForEach(group.snippets) { snippet in rowView(snippet) }
@@ -163,7 +167,7 @@ struct SnippetListView: View {
         groupItems.move(fromOffsets: source, toOffset: destination)
 
         var fullOrder: [Snippet] = []
-        for g in snippetGroups {
+        for g in snippetGroups(from: filtered) {
             fullOrder.append(contentsOf: g.id == group.id ? groupItems : g.snippets)
         }
         commitOrder(of: fullOrder)
@@ -224,38 +228,15 @@ struct SnippetListView: View {
                 .tint(.gray)
             }
             .contextMenu {
-                Button { copy(snippet) } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
-                }
-                Button { editingSnippet = snippet } label: {
-                    Label("Edit", systemImage: "pencil")
-                }
-                Button { duplicate(snippet) } label: {
-                    Label("Duplicate", systemImage: "plus.square.on.square")
-                }
-                Button { togglePin(snippet) } label: {
-                    Label(snippet.isPinned ? "Unpin" : "Pin",
-                          systemImage: snippet.isPinned ? "pin.slash" : "pin")
-                }
-                if let url = snippet.urlValue {
-                    Button { UIApplication.shared.open(url) } label: {
-                        Label("Open Link", systemImage: "safari")
-                    }
-                }
-                Section {
-                    ShareLink(item: snippet.content) {
-                        Label("Share Text", systemImage: "square.and.arrow.up")
-                    }
-                    if let link = shareLink(for: snippet) {
-                        ShareLink(item: link) {
-                            Label("Share as Ditto Link", systemImage: "link")
-                        }
-                    }
-                }
-                Divider()
-                Button(role: .destructive) { delete(snippet) } label: {
-                    Label("Delete", systemImage: "trash")
-                }
+                // Its own view, so the link check and the ditto:// share link
+                // are built when the menu opens, not for every row on every
+                // redraw.
+                SnippetMenuItems(snippet: snippet,
+                                 copy: { copy(snippet) },
+                                 edit: { editingSnippet = snippet },
+                                 duplicate: { duplicate(snippet) },
+                                 togglePin: { togglePin(snippet) },
+                                 delete: { delete(snippet) })
             } preview: {
                 SnippetPreview(snippet: snippet)
             }
@@ -323,12 +304,6 @@ struct SnippetListView: View {
     }
 
     // MARK: - Actions
-
-    /// A self-contained ditto://import link for this snippet (and its category).
-    private func shareLink(for snippet: Snippet) -> URL? {
-        let categories = snippet.category.map { [$0] } ?? []
-        return dittoImportLink(snippets: [snippet], categories: categories)
-    }
 
     private func togglePin(_ snippet: Snippet) {
         // Just toggles the badge — pinning doesn't reorder the list, so
@@ -400,33 +375,36 @@ struct SnippetListView: View {
         return false
     }
 
-    private var snippetGroups: [SnippetGroup] {
+    private func snippetGroups(from snippets: [Snippet]) -> [SnippetGroup] {
         switch settings.grouping {
-        case .category:  return categoryGroups
-        case .dateAdded: return dateGroups
+        case .category:  return categoryGroups(from: snippets)
+        case .dateAdded: return dateGroups(from: snippets)
         case .none:      return []
         }
     }
 
     /// Group by category, in category order, with uncategorized snippets last.
-    private var categoryGroups: [SnippetGroup] {
-        let snippets = filtered
-        var seen = Set<PersistentIdentifier>()
+    private func categoryGroups(from snippets: [Snippet]) -> [SnippetGroup] {
+        // One pass over the snippets, rather than one per category.
         var orderedCats: [Category] = []
+        var byCategory: [PersistentIdentifier: [Snippet]] = [:]
+        var uncategorized: [Snippet] = []
         for s in snippets {
-            if let c = s.category, !seen.contains(c.persistentModelID) {
-                seen.insert(c.persistentModelID)
-                orderedCats.append(c)
+            guard let c = s.category else {
+                uncategorized.append(s)
+                continue
             }
+            let id = c.persistentModelID
+            if byCategory[id] == nil { orderedCats.append(c) }
+            byCategory[id, default: []].append(s)
         }
         orderedCats.sort { $0.sortIndex < $1.sortIndex }
 
         var groups = orderedCats.map { c in
             SnippetGroup(id: "cat:\(c.name)", title: c.name, symbol: c.symbolName,
                          tint: SnippetColor.color(for: c.colorName),
-                         snippets: snippets.filter { $0.category?.persistentModelID == c.persistentModelID })
+                         snippets: byCategory[c.persistentModelID] ?? [])
         }
-        let uncategorized = snippets.filter { $0.category == nil }
         if !uncategorized.isEmpty {
             groups.append(SnippetGroup(id: "uncategorized", title: "Uncategorized",
                                        symbol: "tray", tint: Color.secondary, snippets: uncategorized))
@@ -435,7 +413,7 @@ struct SnippetListView: View {
     }
 
     /// Group by date added, Finder-Recents style.
-    private var dateGroups: [SnippetGroup] {
+    private func dateGroups(from snippets: [Snippet]) -> [SnippetGroup] {
         let cal = Calendar.current
         let now = Date.now
         let startOfToday = cal.startOfDay(for: now)
@@ -461,7 +439,7 @@ struct SnippetListView: View {
         }
 
         var byID: [String: (sort: Date, title: String, items: [Snippet])] = [:]
-        for snippet in filtered {
+        for snippet in snippets {
             let b = bucket(for: snippet.createdAt)
             byID[b.id, default: (b.sort, b.title, [])].items.append(snippet)
         }
@@ -471,6 +449,54 @@ struct SnippetListView: View {
                 SnippetGroup(id: id, title: value.title, symbol: "calendar", tint: Color.secondary,
                              snippets: value.items.sorted { $0.createdAt > $1.createdAt })
             }
+    }
+}
+
+/// A row's long-press menu. A separate view so its body (the link check and
+/// the ditto:// share link) runs when the menu is shown.
+private struct SnippetMenuItems: View {
+    let snippet: Snippet
+    let copy: () -> Void
+    let edit: () -> Void
+    let duplicate: () -> Void
+    let togglePin: () -> Void
+    let delete: () -> Void
+
+    var body: some View {
+        Button(action: copy) {
+            Label("Copy", systemImage: "doc.on.doc")
+        }
+        Button(action: edit) {
+            Label("Edit", systemImage: "pencil")
+        }
+        Button(action: duplicate) {
+            Label("Duplicate", systemImage: "plus.square.on.square")
+        }
+        Button(action: togglePin) {
+            Label(snippet.isPinned ? "Unpin" : "Pin",
+                  systemImage: snippet.isPinned ? "pin.slash" : "pin")
+        }
+        if let url = snippet.urlValue {
+            Button { UIApplication.shared.open(url) } label: {
+                Label("Open Link", systemImage: "safari")
+            }
+        }
+        Section {
+            ShareLink(item: snippet.content) {
+                Label("Share Text", systemImage: "square.and.arrow.up")
+            }
+            // A self-contained ditto://import link for this snippet (and its category).
+            if let link = dittoImportLink(snippets: [snippet],
+                                          categories: snippet.category.map { [$0] } ?? []) {
+                ShareLink(item: link) {
+                    Label("Share as Ditto Link", systemImage: "link")
+                }
+            }
+        }
+        Divider()
+        Button(role: .destructive, action: delete) {
+            Label("Delete", systemImage: "trash")
+        }
     }
 }
 
