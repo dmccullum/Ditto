@@ -318,21 +318,23 @@ struct ContentView: View {
             // Native toolbar items: macOS auto-groups them into pills and fits
             // each button's highlight, matching system apps like Reminders.
             ToolbarItemGroup(placement: .primaryAction) {
-                if isAllView {
-                    Menu {
-                        Picker("Group By", selection: groupingBinding) {
-                            ForEach(SnippetGrouping.allCases) { option in
-                                Text(option.label).tag(option)
-                            }
+                // Always in the toolbar, disabled outside All Snippets:
+                // adding and removing a toolbar item makes AppKit re-lay out
+                // the whole toolbar, ~30 ms on every sidebar switch.
+                Menu {
+                    Picker("Group By", selection: groupingBinding) {
+                        ForEach(SnippetGrouping.allCases) { option in
+                            Text(option.label).tag(option)
                         }
-                        .pickerStyle(.inline)
-                    } label: {
-                        Label("Group By", systemImage: settings.grouping == .none
-                              ? "rectangle.grid.1x2" : "rectangle.grid.1x2.fill")
                     }
-                    .menuIndicator(.hidden)
-                    .help("Group By")
+                    .pickerStyle(.inline)
+                } label: {
+                    Label("Group By", systemImage: settings.grouping == .none
+                          ? "rectangle.grid.1x2" : "rectangle.grid.1x2.fill")
                 }
+                .menuIndicator(.hidden)
+                .disabled(!isAllView)
+                .help("Group By")
 
                 Button { sizeLevel = max(Self.minSizeLevel, sizeLevel - 1) } label: {
                     Label("Zoom Out", systemImage: "minus.magnifyingglass")
