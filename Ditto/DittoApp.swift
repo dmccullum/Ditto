@@ -20,23 +20,35 @@ final class AppCommands {
 
 /// Export / Import, published by the main window while it's focused. The
 /// File menu items are disabled when it's closed or another window is key.
-struct LibraryActions {
+///
+/// These focused-value structs compare equal on their data, not their
+/// closures (which read the window's current state when they run), so the
+/// menu bar isn't rebuilt every time the window redraws.
+struct LibraryActions: Equatable {
     var export: () -> Void
     var `import`: () -> Void
+
+    static func == (lhs: Self, rhs: Self) -> Bool { true }
 }
 
 /// Card size controls, published by the main window while it's focused.
-struct ZoomActions {
+struct ZoomActions: Equatable {
     var canZoomIn: Bool
     var canZoomOut: Bool
     var zoomIn: () -> Void
     var zoomOut: () -> Void
     var reset: () -> Void
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.canZoomIn == rhs.canZoomIn && lhs.canZoomOut == rhs.canZoomOut
+    }
 }
 
 /// What the Snippet menu acts on: the grid's selection, published by the
 /// main window while it's focused and no sheet or dialog is up.
-struct SnippetActions {
+struct SnippetActions: Equatable {
+    /// The selected snippets, in grid order.
+    var ids: [PersistentIdentifier]
     var count: Int
     var allPinned: Bool
     /// The http(s) link a single selected snippet holds.
@@ -50,22 +62,32 @@ struct SnippetActions {
     var togglePin: () -> Void
     var copyShareLink: () -> Void
     var delete: () -> Void
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.ids == rhs.ids && lhs.count == rhs.count && lhs.allPinned == rhs.allPinned &&
+        lhs.link == rhs.link && lhs.isEditingText == rhs.isEditingText
+    }
 }
 
 /// What the Category menu acts on: the category selected in the sidebar.
-struct CategoryActions {
+struct CategoryActions: Equatable {
+    var id: PersistentIdentifier
     var edit: () -> Void
     var duplicate: () -> Void
     var copyShareLink: () -> Void
     var export: () -> Void
     var delete: () -> Void
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
 }
 
 /// Edit → Find Snippets…: opens quick search, or focuses its field when
 /// it's already open.
-struct FindSnippetsAction {
+struct FindSnippetsAction: Equatable {
     var perform: () -> Void
     func callAsFunction() { perform() }
+
+    static func == (lhs: Self, rhs: Self) -> Bool { true }
 }
 
 extension FocusedValues {

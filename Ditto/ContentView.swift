@@ -49,8 +49,9 @@ struct ContentView: View {
 
     @State private var selection: SidebarSelection = .all
     @State private var isQuickSearchPresented = false
-    @State private var quickSearchText = ""
-    @State private var quickSearchSelection: PersistentIdentifier?
+    // Quick search's text and highlighted row live in their own observable
+    // object so typing redraws only the search panel, not the whole window.
+    @State private var quickSearch = QuickSearchModel()
     @FocusState private var quickSearchIsFocused: Bool
 
     // Persisted card size: 0 = smallest … 4 = largest. The grid is adaptive,
@@ -85,10 +86,6 @@ struct ContentView: View {
     // database mid-drag prevents the grid from re-sorting under the cursor.
     @State private var displayOrder: [Snippet] = []
 
-    // Which sidebar row is currently a drag-over target (for highlighting).
-    @State private var dropTargetCategoryID: PersistentIdentifier?
-    @State private var allRowIsDropTarget = false
-
     // Finder-style selection in the card grid. A plain click only copies,
     // but marks where ⇧-click and the arrow keys start from; ⌘-click,
     // ⇧-click, arrows, and ⌘A build a visible selection. The anchor is where
@@ -114,7 +111,8 @@ struct ContentView: View {
 
     private var windowContent: some View {
         NavigationSplitView {
-            sidebar
+            LibrarySidebar(selection: $selection, selected: selection, actions: sidebarActions)
+                .equatable()
         } detail: {
             // Wide enough for quick search (520 pt) and the largest cards.
             detail
@@ -122,16 +120,26 @@ struct ContentView: View {
                 .statusCapsule($status)
                 .overlay(alignment: .top) {
                     if isQuickSearchPresented {
-                        quickSearchPanel
-                            .padding(.top, 28)
-                            .transition(dropDownTransition)
+                        QuickSearchPanel(
+                            model: quickSearch,
+                            isFocused: $quickSearchIsFocused,
+                            onCopy: { snippet in
+                                copy([snippet])
+                                dismissQuickSearch()
+                            },
+                            onReveal: revealInList,
+                            onDismiss: dismissQuickSearch
+                        )
+                        .equatable()
+                        .padding(.top, 28)
+                        .transition(dropDownTransition)
                     }
                 }
         }
         .background {
             TypeToSearchMonitor { characters in
                 if isQuickSearchPresented {
-                    quickSearchText.append(contentsOf: characters)
+                    quickSearch.text.append(contentsOf: characters)
                     quickSearchIsFocused = true
                 } else {
                     beginQuickSearch(with: characters)
@@ -222,106 +230,42 @@ struct ContentView: View {
                 // clicks don't pay for a mirror resync.
                 if old.isEmpty && !new.isEmpty { displayOrder = filteredSnippets }
             }
-            .onChange(of: quickSearchText) { _, _ in
-                quickSearchSelection = quickSearchResults.first?.persistentModelID
-            }
             .onChange(of: selection) { _, _ in clearSelection() }
     }
 
     // MARK: - Sidebar
 
-    private var sidebar: some View {
-        List(selection: $selection) {
-            Section("Library") {
-                Label("All Snippets", systemImage: "tray.full.fill")
-                    .badge(allSnippets.count)
-                    .listRowBackground(dropHighlight(allRowIsDropTarget))
-                    .tag(SidebarSelection.all)
-                    .snippetDropTarget(isTargeted: $allRowIsDropTarget) { refile($0, to: nil) }
-
-                Label {
-                    Text("Frequent")
-                } icon: {
-                    Image(systemName: "flame.fill")
-                        .symbolRenderingMode(.multicolor)
-                }
-                .tag(SidebarSelection.frequent)
-            }
-
-            Section("Categories") {
-                ForEach(categories) { category in
-                    categoryRow(category)
-                        .tag(SidebarSelection.category(category))
-                }
-                .onMove(perform: moveCategories)
-            }
-        }
-        .navigationTitle("Ditto")
-        .frame(minWidth: 220)
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button {
-                    isCreatingCategory = true
-                } label: {
-                    Label("New Category", systemImage: "folder.badge.plus")
-                }
-                .help("New Category")
-            }
-        }
-    }
-
-    private func categoryRow(_ category: Category) -> some View {
-        let accent = SnippetColor.color(for: category.colorName)
-        let id = category.persistentModelID
-        let isTarget = dropTargetCategoryID == id
-        return Label {
-            Text(category.name)
-        } icon: {
-            Image(systemName: category.symbolName)
-                .foregroundStyle(accent)
-        }
-        .badge(category.snippets.count)
-        .contentShape(Rectangle())
-        .listRowBackground(dropHighlight(isTarget, tint: accent))
-        .snippetDropTarget(isTargeted: Binding(
-            get: { dropTargetCategoryID == id },
-            set: { targeted in
-                if targeted { dropTargetCategoryID = id }
-                else if dropTargetCategoryID == id { dropTargetCategoryID = nil }
-            }
-        )) { refile($0, to: category) }
-        .contextMenu {
-            Button("Edit…") { editingCategory = category }
-            Button("Duplicate") { duplicateCategory(category) }
-            Divider()
-            Button("Copy Share Link") { copyShareLink(for: category) }
-            Button("Export…") { exportCategory(category) }
-            Divider()
-            Button("Delete…", role: .destructive) { categoryPendingDeletion = category }
-        }
-    }
-
-    /// A rounded highlight shown behind a sidebar row while a snippet hovers over it.
-    @ViewBuilder
-    private func dropHighlight(_ active: Bool, tint: Color = .accentColor) -> some View {
-        if active {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(tint.opacity(0.25))
-        } else {
-            Color.clear
-        }
+    private var sidebarActions: SidebarActions {
+        SidebarActions(
+            refile: { ids, category in refile(ids, to: category) },
+            edit: { editingCategory = $0 },
+            duplicate: { duplicateCategory($0) },
+            copyShareLink: { copyShareLink(for: $0) },
+            export: { exportCategory($0) },
+            delete: { categoryPendingDeletion = $0 },
+            newCategory: { isCreatingCategory = true }
+        )
     }
 
     // MARK: - Detail
 
     private var detail: some View {
-        Group {
-            if filteredSnippets.isEmpty {
+        // Sort, group, and summarize the selection once per render; every
+        // card reads from these instead of recomputing them.
+        let shown = gridSnippets
+        let groups = isGrouped ? snippetGroups(from: shown) : []
+        let onScreen = isGrouped
+            ? groups.filter { !collapsedGroups.contains($0.id) }.flatMap(\.snippets)
+            : shown
+        let summary = SelectionSummary(ids: selectedSnippetIDs, in: onScreen)
+
+        return Group {
+            if shown.isEmpty {
                 emptyState
             } else if isGrouped {
-                groupedSnippetView
+                groupedSnippetView(groups, summary: summary)
             } else {
-                snippetGrid
+                snippetGrid(shown, summary: summary)
             }
         }
         .onGeometryChange(for: CGSize.self) { $0.size } action: { gridSize = $0 }
@@ -425,7 +369,7 @@ struct ContentView: View {
         }
     }
 
-    private var snippetGrid: some View {
+    private func snippetGrid(_ snippets: [Snippet], summary: SelectionSummary) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVGrid(
@@ -434,12 +378,12 @@ struct ContentView: View {
                 ) {
                     if #available(macOS 27, *) {
                         ForEach(filteredSnippets) { snippet in
-                            card(for: snippet)
+                            card(for: snippet, summary: summary)
                         }
                         .reorderable()
                     } else {
-                        ForEach(gridSnippets) { snippet in
-                            card(for: snippet)
+                        ForEach(snippets) { snippet in
+                            card(for: snippet, summary: summary)
                         }
                     }
 
@@ -464,20 +408,29 @@ struct ContentView: View {
     private static let gridPadding: CGFloat = 20
 
     /// One card, wired to the grid's selection, copy, and reorder state.
-    private func card(for snippet: Snippet) -> some View {
+    /// Cards are equatable on these inputs (not the closures), so a change
+    /// elsewhere in the window doesn't redraw every card.
+    private func card(for snippet: Snippet, summary: SelectionSummary) -> some View {
         let id = snippet.persistentModelID
-        let targets = actionTargets(for: snippet)
+        let isSelected = summary.ids.contains(id)
+        // A card in a multi-selection acts on the whole selection.
+        let actsOnSelection = isSelected && summary.ids.count > 1
         return SnippetCard(
             snippet: snippet,
             sizeLevel: sizeLevel,
-            isSelected: selectedSnippetIDs.contains(id),
-            isSelectionFocused: gridIsFocused,
+            isSelected: isSelected,
+            // Only a selected card shows the focus state, so unselected
+            // cards stay equal when focus moves.
+            isSelectionFocused: isSelected ? gridIsFocused : true,
             isFlashing: flashingSnippetIDs.contains(id),
-            isShowingPreview: Binding(get: { previewingSnippetID == id },
-                                      set: { previewingSnippetID = $0 ? id : nil }),
+            isShowingPreview: previewingSnippetID == id,
+            setShowingPreview: { shown in
+                if shown { previewingSnippetID = id }
+                else if previewingSnippetID == id { previewingSnippetID = nil }
+            },
             isDragging: !draggedSnippetIDs.isEmpty,
-            actionCount: targets.count,
-            allTargetsPinned: targets.allSatisfy(\.isPinned),
+            actionCount: actsOnSelection ? summary.count : 1,
+            allTargetsPinned: actsOnSelection ? summary.allPinned : snippet.isPinned,
             onClick: { click(snippet) },
             onCopy: { copy(actionTargets(for: snippet)) },
             onEdit: { editingSnippet = snippet },
@@ -488,6 +441,7 @@ struct ContentView: View {
             onReorder: { reorderSnippetsLocally(to: snippet) },
             onCommit: commitSnippetOrder
         )
+        .equatable()
     }
 
     private func scroll(_ proxy: ScrollViewProxy, to id: PersistentIdentifier?) {
@@ -507,31 +461,37 @@ struct ContentView: View {
         let snippets: [Snippet]
     }
 
-    private var snippetGroups: [SnippetGroup] {
+    /// Built from `gridSnippets` (not the raw query) so that mid-drag the
+    /// sections track the live order and moves animate, same as the flat grid.
+    private func snippetGroups(from snippets: [Snippet]) -> [SnippetGroup] {
         switch settings.grouping {
-        case .category:  return categoryGroups
-        case .dateAdded: return dateGroups
+        case .category:  return categoryGroups(from: snippets)
+        case .dateAdded: return dateGroups(from: snippets)
         case .none:      return []
         }
     }
 
     /// Group by category, in sidebar order, with uncategorized snippets last.
-    /// Built from `gridSnippets` (not the raw query) so that mid-drag the
-    /// sections track the live order and moves animate, same as the flat grid.
-    private var categoryGroups: [SnippetGroup] {
-        let snippets = gridSnippets
+    private func categoryGroups(from snippets: [Snippet]) -> [SnippetGroup] {
+        // One pass over the snippets, rather than one per category.
+        var byCategory: [PersistentIdentifier: [Snippet]] = [:]
+        var uncategorized: [Snippet] = []
+        for snippet in snippets {
+            if let id = snippet.category?.persistentModelID {
+                byCategory[id, default: []].append(snippet)
+            } else {
+                uncategorized.append(snippet)
+            }
+        }
+
         var groups: [SnippetGroup] = []
         for category in categories {
-            let items = snippets.filter {
-                $0.category?.persistentModelID == category.persistentModelID
-            }
-            guard !items.isEmpty else { continue }
+            guard let items = byCategory[category.persistentModelID], !items.isEmpty else { continue }
             groups.append(SnippetGroup(id: "cat:\(category.name)", title: category.name,
                                        symbol: category.symbolName,
                                        accent: SnippetColor.color(for: category.colorName),
                                        snippets: items))
         }
-        let uncategorized = snippets.filter { $0.category == nil }
         if !uncategorized.isEmpty {
             groups.append(SnippetGroup(id: "uncategorized", title: "Uncategorized",
                                        symbol: "tray", accent: .secondary,
@@ -542,7 +502,7 @@ struct ContentView: View {
 
     /// Group by date added, Finder-Recents style: Today, Yesterday, Previous 7
     /// Days, Previous 30 Days, then by month for the current year, then by year.
-    private var dateGroups: [SnippetGroup] {
+    private func dateGroups(from snippets: [Snippet]) -> [SnippetGroup] {
         let cal = Calendar.current
         let now = Date.now
         let startOfToday = cal.startOfDay(for: now)
@@ -570,7 +530,7 @@ struct ContentView: View {
 
         // Partition snippets into buckets, remembering each bucket's sort key.
         var byID: [String: (sort: Date, title: String, items: [Snippet])] = [:]
-        for snippet in filteredSnippets {
+        for snippet in snippets {
             let b = bucket(for: snippet.createdAt)
             byID[b.id, default: (b.sort, b.title, [])].items.append(snippet)
         }
@@ -584,11 +544,11 @@ struct ContentView: View {
             }
     }
 
-    private var groupedSnippetView: some View {
+    private func groupedSnippetView(_ groups: [SnippetGroup], summary: SelectionSummary) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 20) {
-                    ForEach(snippetGroups) { group in
+                    ForEach(groups) { group in
                         let collapsed = collapsedGroups.contains(group.id)
                         VStack(alignment: .leading, spacing: 12) {
                             groupHeader(group, collapsed: collapsed)
@@ -600,12 +560,12 @@ struct ContentView: View {
                                 ) {
                                     if #available(macOS 27, *) {
                                         ForEach(group.snippets) { snippet in
-                                            card(for: snippet)
+                                            card(for: snippet, summary: summary)
                                         }
                                         .reorderable(collectionID: group.id)
                                     } else {
                                         ForEach(group.snippets) { snippet in
-                                            card(for: snippet)
+                                            card(for: snippet, summary: summary)
                                         }
                                     }
                                 }
@@ -758,177 +718,21 @@ struct ContentView: View {
 
     // MARK: - Quick search
 
-    private var quickSearchResults: [Snippet] {
-        SnippetSearch.results(for: quickSearchText, in: allSnippets)
-    }
-
-    private var selectedQuickSearchSnippet: Snippet? {
-        guard let id = quickSearchSelection else { return quickSearchResults.first }
-        return quickSearchResults.first { $0.persistentModelID == id }
-    }
-
-    private var quickSearchPanel: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search every snippet", text: $quickSearchText)
-                    .textFieldStyle(.plain)
-                    .font(.title3)
-                    .focused($quickSearchIsFocused)
-                    .onKeyPress(.upArrow) {
-                        moveQuickSearchSelection(by: -1)
-                        return .handled
-                    }
-                    .onKeyPress(.downArrow) {
-                        moveQuickSearchSelection(by: 1)
-                        return .handled
-                    }
-                    .onKeyPress(.return) {
-                        if NSEvent.modifierFlags.contains(.command) {
-                            revealQuickSearchSelection()
-                        } else {
-                            copyQuickSearchSelection()
-                        }
-                        return .handled
-                    }
-                    .onKeyPress(.escape) {
-                        dismissQuickSearch()
-                        return .handled
-                    }
-                if !quickSearchText.isEmpty {
-                    Button {
-                        quickSearchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(14)
-
-            Divider()
-
-            if quickSearchResults.isEmpty {
-                ContentUnavailableView.search(text: quickSearchText)
-                    .frame(height: 180)
-            } else {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 2) {
-                            ForEach(quickSearchResults) { snippet in
-                                quickSearchRow(snippet)
-                                    .id(snippet.persistentModelID)
-                            }
-                        }
-                        .padding(6)
-                    }
-                    .frame(maxHeight: 360)
-                    .onChange(of: quickSearchSelection) { _, id in
-                        guard let id else { return }
-                        withDMAnimation(.snappy) {
-                            proxy.scrollTo(id, anchor: .center)
-                        }
-                    }
-                }
-            }
-
-            Divider()
-            HStack(spacing: 14) {
-                Text("↑↓ Navigate")
-                Text("↩ Copy")
-                Text("⌘↩ Show in List")
-                Spacer()
-                Text("esc Close")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-        }
-        .frame(width: 520)
-        .background {
-            ClickOutsideSearchMonitor(onClickOutside: dismissQuickSearch)
-        }
-        .floatingGlass(in: RoundedRectangle(cornerRadius: Self.quickSearchRadius, style: .continuous))
-    }
-
-    private static let quickSearchRadius = DMRadius.large
-    /// Rows sit 6 points in from the panel edge, so they take its radius less 6.
-    private static let quickSearchRowRadius = DMRadius.inner(outer: quickSearchRadius, padding: 6)
-
-    private func quickSearchRow(_ snippet: Snippet) -> some View {
-        let selected = quickSearchSelection == snippet.persistentModelID
-        let accent = snippet.tint
-
-        return Button {
-            quickSearchSelection = snippet.persistentModelID
-            copyQuickSearchSelection()
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: snippet.category?.symbolName ?? "doc.text")
-                    .foregroundStyle(accent)
-                    .frame(width: 20)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(snippet.displayTitle)
-                        .fontWeight(.medium)
-                        .lineLimit(1)
-                    Text(snippet.preview)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                if let category = snippet.category {
-                    Text(category.name)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected ? accent.opacity(0.18) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: Self.quickSearchRowRadius, style: .continuous))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            if hovering { quickSearchSelection = snippet.persistentModelID }
-        }
-    }
-
     private func beginQuickSearch(with characters: String = "") {
-        quickSearchText = characters
+        quickSearch.text = characters
+        quickSearch.selection = nil
         withDMAnimation(.smooth) { isQuickSearchPresented = true }
-        quickSearchSelection = SnippetSearch.results(for: characters, in: allSnippets).first?.persistentModelID
         Task { quickSearchIsFocused = true }
     }
 
     private func dismissQuickSearch() {
         withDMAnimation(.smooth) { isQuickSearchPresented = false }
-        quickSearchText = ""
-        quickSearchSelection = nil
+        quickSearch.text = ""
+        quickSearch.selection = nil
     }
 
-    private func moveQuickSearchSelection(by offset: Int) {
-        let results = quickSearchResults
-        guard !results.isEmpty else { return }
-        let current = results.firstIndex { $0.persistentModelID == quickSearchSelection } ?? 0
-        let next = min(max(current + offset, 0), results.count - 1)
-        quickSearchSelection = results[next].persistentModelID
-    }
-
-    private func copyQuickSearchSelection() {
-        guard let snippet = selectedQuickSearchSnippet else { return }
-        copy([snippet])
-        dismissQuickSearch()
-    }
-
-    private func revealQuickSearchSelection() {
-        guard let snippet = selectedQuickSearchSnippet else { return }
+    /// ⌘↩ in quick search: show the snippet's category in the sidebar.
+    private func revealInList(_ snippet: Snippet) {
         if let category = snippet.category {
             selection = .category(category)
         } else {
@@ -954,9 +758,11 @@ struct ContentView: View {
     }
 
     private var snippetActions: SnippetActions {
-        let targets = selectedSnippets
+        // Nothing selected is the common case; skip laying out the grid.
+        let targets = selectedSnippetIDs.isEmpty ? [] : selectedSnippets
         let single = targets.count == 1 ? targets.first : nil
         return SnippetActions(
+            ids: targets.map(\.persistentModelID),
             count: targets.count,
             allPinned: !targets.isEmpty && targets.allSatisfy(\.isPinned),
             link: single?.urlValue,
@@ -983,6 +789,7 @@ struct ContentView: View {
     private var categoryActions: CategoryActions? {
         guard let category = selectedCategory else { return nil }
         return CategoryActions(
+            id: category.persistentModelID,
             edit: { editingCategory = category },
             duplicate: { duplicateCategory(category) },
             copyShareLink: { copyShareLink(for: category) },
@@ -1008,9 +815,10 @@ struct ContentView: View {
     private var gridRows: [[Snippet]] {
         let available = gridSize.width - Self.gridPadding * 2
         let columns = max(1, Int((available + Self.gridSpacing) / (cardMinWidth + Self.gridSpacing)))
+        let shown = gridSnippets
         let sections = isGrouped
-            ? snippetGroups.filter { !collapsedGroups.contains($0.id) }.map(\.snippets)
-            : [gridSnippets]
+            ? snippetGroups(from: shown).filter { !collapsedGroups.contains($0.id) }.map(\.snippets)
+            : [shown]
         return sections.flatMap { items in
             stride(from: 0, to: items.count, by: columns).map {
                 Array(items[$0..<min($0 + columns, items.count)])
@@ -1298,21 +1106,10 @@ struct ContentView: View {
         try? modelContext.save()
     }
 
-    /// Reorder categories via the sidebar List's native drag (preserves clicks).
-    private func moveCategories(from source: IndexSet, to destination: Int) {
-        var ordered = categories
-        ordered.move(fromOffsets: source, toOffset: destination)
-        for (index, category) in ordered.enumerated() where category.sortIndex != index {
-            category.sortIndex = index
-        }
-        modelContext.undoManager?.setActionName("Reorder Categories")
-        try? modelContext.save()
-    }
-
     /// Reassign dragged snippets' category (nil = uncategorized).
     private func refile(_ ids: [PersistentIdentifier], to category: Category?) {
-        for snippet in allSnippets where ids.contains(snippet.persistentModelID) {
-            snippet.category = category
+        for id in Set(ids) {
+            (modelContext.model(for: id) as? Snippet)?.category = category
         }
         modelContext.undoManager?.setActionName(
             "Move to \(category.map { "“\($0.name)”" } ?? "Uncategorized")")
@@ -1376,6 +1173,351 @@ struct ContentView: View {
             }
         } catch {
             showAlert("Couldn’t Import Library", message: error.localizedDescription)
+        }
+    }
+}
+
+/// The grid selection, summarized once per render for every card: which IDs
+/// are selected, and how many of them (and whether all are pinned) among the
+/// cards on screen.
+private struct SelectionSummary {
+    let ids: Set<PersistentIdentifier>
+    let count: Int
+    let allPinned: Bool
+
+    init(ids: Set<PersistentIdentifier>, in onScreen: [Snippet]) {
+        self.ids = ids
+        guard !ids.isEmpty else {
+            count = 0
+            allPinned = false
+            return
+        }
+        let selected = onScreen.filter { ids.contains($0.persistentModelID) }
+        count = selected.count
+        allPinned = !selected.isEmpty && selected.allSatisfy(\.isPinned)
+    }
+}
+
+// MARK: - Sidebar
+
+/// What the sidebar asks the window to do.
+private struct SidebarActions {
+    var refile: ([PersistentIdentifier], Category?) -> Void
+    var edit: (Category) -> Void
+    var duplicate: (Category) -> Void
+    var copyShareLink: (Category) -> Void
+    var export: (Category) -> Void
+    var delete: (Category) -> Void
+    var newCategory: () -> Void
+}
+
+/// The category sidebar. Its own view (equatable on the selection) so grid
+/// changes — selection, copying, dragging — don't rebuild the list, and a
+/// drag hovering over a row redraws only the sidebar.
+private struct LibrarySidebar: View, Equatable {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Category.sortIndex) private var categories: [Category]
+    @Query private var allSnippets: [Snippet]
+
+    @Binding var selection: SidebarSelection
+    /// The selection when the parent rendered, for `==`.
+    let selected: SidebarSelection
+    let actions: SidebarActions
+
+    // Which row is currently a drag-over target (for highlighting).
+    @State private var dropTargetCategoryID: PersistentIdentifier?
+    @State private var allRowIsDropTarget = false
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.selected == rhs.selected
+    }
+
+    var body: some View {
+        // Count every category's snippets in one pass.
+        var counts: [PersistentIdentifier: Int] = [:]
+        for snippet in allSnippets {
+            if let id = snippet.category?.persistentModelID { counts[id, default: 0] += 1 }
+        }
+
+        return List(selection: $selection) {
+            Section("Library") {
+                Label("All Snippets", systemImage: "tray.full.fill")
+                    .badge(allSnippets.count)
+                    .listRowBackground(dropHighlight(allRowIsDropTarget))
+                    .tag(SidebarSelection.all)
+                    .snippetDropTarget(isTargeted: $allRowIsDropTarget) { actions.refile($0, nil) }
+
+                Label {
+                    Text("Frequent")
+                } icon: {
+                    Image(systemName: "flame.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
+                .tag(SidebarSelection.frequent)
+            }
+
+            Section("Categories") {
+                ForEach(categories) { category in
+                    categoryRow(category, count: counts[category.persistentModelID] ?? 0)
+                        .tag(SidebarSelection.category(category))
+                }
+                .onMove(perform: moveCategories)
+            }
+        }
+        .navigationTitle("Ditto")
+        .frame(minWidth: 220)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    actions.newCategory()
+                } label: {
+                    Label("New Category", systemImage: "folder.badge.plus")
+                }
+                .help("New Category")
+            }
+        }
+    }
+
+    private func categoryRow(_ category: Category, count: Int) -> some View {
+        let accent = SnippetColor.color(for: category.colorName)
+        let id = category.persistentModelID
+        let isTarget = dropTargetCategoryID == id
+        return Label {
+            Text(category.name)
+        } icon: {
+            Image(systemName: category.symbolName)
+                .foregroundStyle(accent)
+        }
+        .badge(count)
+        .contentShape(Rectangle())
+        .listRowBackground(dropHighlight(isTarget, tint: accent))
+        .snippetDropTarget(isTargeted: Binding(
+            get: { dropTargetCategoryID == id },
+            set: { targeted in
+                if targeted { dropTargetCategoryID = id }
+                else if dropTargetCategoryID == id { dropTargetCategoryID = nil }
+            }
+        )) { actions.refile($0, category) }
+        .contextMenu {
+            Button("Edit…") { actions.edit(category) }
+            Button("Duplicate") { actions.duplicate(category) }
+            Divider()
+            Button("Copy Share Link") { actions.copyShareLink(category) }
+            Button("Export…") { actions.export(category) }
+            Divider()
+            Button("Delete…", role: .destructive) { actions.delete(category) }
+        }
+    }
+
+    /// A rounded highlight shown behind a sidebar row while a snippet hovers over it.
+    @ViewBuilder
+    private func dropHighlight(_ active: Bool, tint: Color = .accentColor) -> some View {
+        if active {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(tint.opacity(0.25))
+        } else {
+            Color.clear
+        }
+    }
+
+    /// Reorder categories via the sidebar List's native drag (preserves clicks).
+    private func moveCategories(from source: IndexSet, to destination: Int) {
+        var ordered = categories
+        ordered.move(fromOffsets: source, toOffset: destination)
+        for (index, category) in ordered.enumerated() where category.sortIndex != index {
+            category.sortIndex = index
+        }
+        modelContext.undoManager?.setActionName("Reorder Categories")
+        try? modelContext.save()
+    }
+}
+
+// MARK: - Quick search
+
+/// Quick search's query and highlighted row. Only the panel reads these, so
+/// typing and hovering redraw the panel alone.
+@Observable
+final class QuickSearchModel {
+    var text = ""
+    var selection: PersistentIdentifier?
+}
+
+/// The ⌘F / type-to-search panel that drops down over the grid.
+private struct QuickSearchPanel: View, Equatable {
+    @Query(sort: \Snippet.sortIndex) private var allSnippets: [Snippet]
+    let model: QuickSearchModel
+    var isFocused: FocusState<Bool>.Binding
+    let onCopy: (Snippet) -> Void
+    let onReveal: (Snippet) -> Void
+    let onDismiss: () -> Void
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.model === rhs.model
+    }
+
+    private static let radius = DMRadius.large
+
+    var body: some View {
+        @Bindable var model = model
+        // Search once per keystroke; the rows below only read the highlight.
+        let results = SnippetSearch.results(for: model.text, in: allSnippets)
+
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search every snippet", text: $model.text)
+                    .textFieldStyle(.plain)
+                    .font(.title3)
+                    .focused(isFocused)
+                    .onKeyPress(.upArrow) {
+                        moveSelection(by: -1, in: results)
+                        return .handled
+                    }
+                    .onKeyPress(.downArrow) {
+                        moveSelection(by: 1, in: results)
+                        return .handled
+                    }
+                    .onKeyPress(.return) {
+                        guard let snippet = selectedSnippet(in: results) else { return .handled }
+                        if NSEvent.modifierFlags.contains(.command) {
+                            onReveal(snippet)
+                        } else {
+                            onCopy(snippet)
+                        }
+                        return .handled
+                    }
+                    .onKeyPress(.escape) {
+                        onDismiss()
+                        return .handled
+                    }
+                if !model.text.isEmpty {
+                    Button {
+                        model.text = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(14)
+
+            Divider()
+
+            if results.isEmpty {
+                ContentUnavailableView.search(text: model.text)
+                    .frame(height: 180)
+            } else {
+                QuickSearchResultList(model: model, results: results, onCopy: onCopy)
+            }
+
+            Divider()
+            HStack(spacing: 14) {
+                Text("↑↓ Navigate")
+                Text("↩ Copy")
+                Text("⌘↩ Show in List")
+                Spacer()
+                Text("esc Close")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .frame(width: 520)
+        .background {
+            ClickOutsideSearchMonitor(onClickOutside: onDismiss)
+        }
+        .floatingGlass(in: RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
+        .onChange(of: model.text, initial: true) { _, text in
+            model.selection = SnippetSearch.results(for: text, in: allSnippets)
+                .first?.persistentModelID
+        }
+    }
+
+    private func selectedSnippet(in results: [Snippet]) -> Snippet? {
+        guard let id = model.selection else { return results.first }
+        return results.first { $0.persistentModelID == id }
+    }
+
+    private func moveSelection(by offset: Int, in results: [Snippet]) {
+        guard !results.isEmpty else { return }
+        let current = results.firstIndex { $0.persistentModelID == model.selection } ?? 0
+        let next = min(max(current + offset, 0), results.count - 1)
+        model.selection = results[next].persistentModelID
+    }
+}
+
+/// Quick search's result rows. Reads the highlighted row itself, so moving
+/// the highlight (arrows, hover) doesn't re-run the search.
+private struct QuickSearchResultList: View {
+    let model: QuickSearchModel
+    let results: [Snippet]
+    let onCopy: (Snippet) -> Void
+
+    /// Rows sit 6 points in from the panel edge, so they take its radius less 6.
+    private static let rowRadius = DMRadius.inner(outer: DMRadius.large, padding: 6)
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(results) { snippet in
+                        row(snippet)
+                            .id(snippet.persistentModelID)
+                    }
+                }
+                .padding(6)
+            }
+            .frame(maxHeight: 360)
+            .onChange(of: model.selection) { _, id in
+                guard let id else { return }
+                withDMAnimation(.snappy) {
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
+        }
+    }
+
+    private func row(_ snippet: Snippet) -> some View {
+        let selected = model.selection == snippet.persistentModelID
+        let accent = snippet.tint
+
+        return Button {
+            onCopy(snippet)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: snippet.category?.symbolName ?? "doc.text")
+                    .foregroundStyle(accent)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(snippet.displayTitle)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                    Text(snippet.preview)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                if let category = snippet.category {
+                    Text(category.name)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selected ? accent.opacity(0.18) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: Self.rowRadius, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            if hovering { model.selection = snippet.persistentModelID }
         }
     }
 }

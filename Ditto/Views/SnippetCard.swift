@@ -10,7 +10,10 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-struct SnippetCard: View {
+/// Equatable on its displayed inputs, not its closures: the grid wraps each
+/// card in `.equatable()` so an unrelated change in the window doesn't redraw
+/// it. Edits to the snippet itself still redraw it, through observation.
+struct SnippetCard: View, Equatable {
     @Environment(\.controlActiveState) private var controlActiveState
     @Environment(\.colorSchemeContrast) private var contrast
     let snippet: Snippet
@@ -23,7 +26,9 @@ struct SnippetCard: View {
     var isSelectionFocused = true
     /// Showing the copy confirmation.
     var isFlashing = false
-    @Binding var isShowingPreview: Bool
+    /// The preview popover is open; `setShowingPreview` opens or closes it.
+    var isShowingPreview = false
+    var setShowingPreview: (Bool) -> Void
     /// A drag from the grid is in progress (macOS 26's live reorder).
     var isDragging = false
     /// How many snippets the context menu acts on: the whole selection when
@@ -44,6 +49,22 @@ struct SnippetCard: View {
 
     @State private var isHovering = false
     @State private var isHoveringPreviewButton = false
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.snippet === rhs.snippet &&
+        lhs.sizeLevel == rhs.sizeLevel &&
+        lhs.isSelected == rhs.isSelected &&
+        lhs.isSelectionFocused == rhs.isSelectionFocused &&
+        lhs.isFlashing == rhs.isFlashing &&
+        lhs.isShowingPreview == rhs.isShowingPreview &&
+        lhs.isDragging == rhs.isDragging &&
+        lhs.actionCount == rhs.actionCount &&
+        lhs.allTargetsPinned == rhs.allTargetsPinned
+    }
+
+    private var previewBinding: Binding<Bool> {
+        Binding(get: { isShowingPreview }, set: setShowingPreview)
+    }
 
     private var accent: Color {
         snippet.tint
@@ -97,6 +118,15 @@ struct SnippetCard: View {
                         .strokeBorder(accent.opacity(strokeOpacity), lineWidth: 1)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                // The shadow comes from the card's shape alone, so it isn't
+                // re-blurred from the text and overlays on every hover.
+                // Hover changes the outline and footer tint only; the card
+                // doesn't grow or lift.
+                .background {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.background)
+                        .shadow(color: accent.opacity(0.08), radius: 4, y: 2)
+                }
                 .overlay {
                     if isSelected {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -104,9 +134,6 @@ struct SnippetCard: View {
                             .padding(-4)
                     }
                 }
-                // Hover changes the outline and footer tint only; the card
-                // doesn't grow or lift.
-                .shadow(color: accent.opacity(0.08), radius: 4, y: 2)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -125,7 +152,7 @@ struct SnippetCard: View {
                 if let url = snippet.urlValue {
                     Button("Open Link") { NSWorkspace.shared.open(url) }
                 }
-                Button("Preview") { isShowingPreview = true }
+                Button("Preview") { setShowingPreview(true) }
             }
             Divider()
             if !many {
@@ -141,11 +168,11 @@ struct SnippetCard: View {
             Button(many ? "Delete \(actionCount) Snippets" : "Delete", role: .destructive,
                    action: onDelete)
         }
-        .popover(isPresented: $isShowingPreview, arrowEdge: .bottom) {
+        .popover(isPresented: previewBinding, arrowEdge: .bottom) {
             SnippetPreview(
                 snippet: snippet,
-                onCopy: { isShowingPreview = false; onCopy() },
-                onEdit: { isShowingPreview = false; onEdit() }
+                onCopy: { setShowingPreview(false); onCopy() },
+                onEdit: { setShowingPreview(false); onEdit() }
             )
         }
     }
@@ -179,7 +206,7 @@ struct SnippetCard: View {
             HStack(spacing: 4) {
                 // Always-visible preview chip: eye + char count in one capsule,
                 // brightening under the cursor so it reads as a button.
-                Button { isShowingPreview = true } label: {
+                Button { setShowingPreview(true) } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "eye")
                             .font(.caption2.weight(.semibold))
