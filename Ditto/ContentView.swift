@@ -1301,13 +1301,13 @@ private struct LibrarySidebar: View, Equatable {
             }
         )) { actions.refile($0, category) }
         .contextMenu {
-            Button("Edit…") { actions.edit(category) }
+            Button("Edit Category…") { actions.edit(category) }
             Button("Duplicate") { actions.duplicate(category) }
             Divider()
             Button("Copy Share Link") { actions.copyShareLink(category) }
-            Button("Export…") { actions.export(category) }
+            Button("Export Category…") { actions.export(category) }
             Divider()
-            Button("Delete…", role: .destructive) { actions.delete(category) }
+            Button("Delete Category…", role: .destructive) { actions.delete(category) }
         }
     }
 

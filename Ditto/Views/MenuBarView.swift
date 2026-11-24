@@ -153,7 +153,8 @@ struct MenuBarView: View {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.caption2.weight(.bold))
+                    .imageScale(.small)
                     .rotationEffect(.degrees(isExpanded(group.title) ? 90 : 0))
                 Text(group.title.uppercased())
                     .font(.caption2.weight(.semibold))

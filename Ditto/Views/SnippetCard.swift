@@ -158,14 +158,13 @@ struct SnippetCard: View, Equatable {
             if !many {
                 Button("Edit…", action: onEdit)
                 Button("Duplicate", action: onDuplicate)
-            }
-            Button(allTargetsPinned ? "Unpin" : "Pin", action: onTogglePin)
-            if !many {
                 Divider()
                 Button("Copy Share Link", action: onCopyShareLink)
+                Divider()
             }
+            Button(allTargetsPinned ? "Unpin" : "Pin", action: onTogglePin)
             Divider()
-            Button(many ? "Delete \(actionCount) Snippets" : "Delete", role: .destructive,
+            Button(many ? "Delete \(actionCount) Snippets" : "Delete Snippet", role: .destructive,
                    action: onDelete)
         }
         .popover(isPresented: previewBinding, arrowEdge: .bottom) {

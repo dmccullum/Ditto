@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import DMKit
 
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
@@ -26,7 +27,7 @@ struct SettingsView: View {
             }
 
             Section("General") {
-                Toggle("Launch Ditto at login", isOn: $launchAtLogin)
+                Toggle("Open at Login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in
                         LoginItem.setEnabled(enabled)
                     }
@@ -44,7 +45,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 400)
+        .frame(width: DMLayout.settingsWidth)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 

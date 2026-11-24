@@ -238,23 +238,26 @@ struct DittoCommands: Commands {
             let count = snippetActions?.count ?? 0
             Button(count > 1 ? "Copy \(count) Snippets" : "Copy") { snippetActions?.copy() }
                 .disabled(count == 0)
+            Button("Open Link") {
+                if let link = snippetActions?.link { NSWorkspace.shared.open(link) }
+            }
+            .disabled(snippetActions?.link == nil)
             Button("Preview") { snippetActions?.preview() }
                 .keyboardShortcut("y", modifiers: .command)
                 .disabled(count != 1)
+            Divider()
             Button("Edit…") { snippetActions?.edit() }
                 .keyboardShortcut("i", modifiers: .command)
                 .disabled(count != 1)
             Button("Duplicate") { snippetActions?.duplicate() }
                 .keyboardShortcut("d", modifiers: .command)
                 .disabled(count != 1)
-            Button(snippetActions?.allPinned == true ? "Unpin" : "Pin") { snippetActions?.togglePin() }
-                .disabled(count == 0)
+            Divider()
             Button("Copy Share Link") { snippetActions?.copyShareLink() }
                 .disabled(count != 1)
-            Button("Open Link") {
-                if let link = snippetActions?.link { NSWorkspace.shared.open(link) }
-            }
-            .disabled(snippetActions?.link == nil)
+            Divider()
+            Button(snippetActions?.allPinned == true ? "Unpin" : "Pin") { snippetActions?.togglePin() }
+                .disabled(count == 0)
             Divider()
             Button(count > 1 ? "Delete \(count) Snippets" : "Delete Snippet") { snippetActions?.delete() }
                 .keyboardShortcut(.delete, modifiers: .command)
