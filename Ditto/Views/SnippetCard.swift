@@ -50,7 +50,7 @@ struct SnippetCard: View, Equatable {
     @State private var isHovering = false
     @State private var isHoveringPreviewButton = false
 
-    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+    static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.snippet === rhs.snippet &&
         lhs.sizeLevel == rhs.sizeLevel &&
         lhs.isSelected == rhs.isSelected &&
@@ -63,7 +63,7 @@ struct SnippetCard: View, Equatable {
     }
 
     private var previewBinding: Binding<Bool> {
-        Binding(get: { isShowingPreview }, set: setShowingPreview)
+        Binding(get: { isShowingPreview }, set: { setShowingPreview($0) })
     }
 
     private var accent: Color {
